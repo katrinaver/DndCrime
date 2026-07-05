@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", system-ui, sans-serif;
+  --color-dnd-dark: #0f0e17;
+  --color-dnd-card: #1a1825;
+  --color-dnd-border: #2d2a3e;
+  --color-dnd-gold: #c9a227;
+  --color-dnd-gold-hover: #e0b83a;
+  --color-dnd-purple: #7c3aed;
+  --color-dnd-purple-hover: #8b5cf6;
+  --color-dnd-muted: #9ca3af;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--color-dnd-dark);
+  color: #f3f4f6;
+  font-family: var(--font-sans);
+}
