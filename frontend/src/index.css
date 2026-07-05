@@ -19,3 +19,91 @@ body {
   color: #f3f4f6;
   font-family: var(--font-sans);
 }
+
+/* Rich text editor (TipTap) */
+.tiptap-editor .ProseMirror {
+  outline: none;
+  color: #f3f4f6;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.tiptap-editor .prose-editor-full {
+  min-height: 120px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 0.75rem 1rem;
+}
+
+.tiptap-editor .prose-editor-compact {
+  min-height: 72px;
+  max-height: 160px;
+  overflow-y: auto;
+  padding: 0.625rem 0.875rem;
+}
+
+.tiptap-editor .ProseMirror p.is-editor-empty:first-child::before {
+  color: #6b7280;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.tiptap-editor .ProseMirror p {
+  margin: 0.25rem 0;
+}
+
+.tiptap-editor .ProseMirror ul,
+.tiptap-editor .ProseMirror ol {
+  margin: 0.35rem 0;
+  padding-left: 1.25rem;
+}
+
+.tiptap-editor .ProseMirror a {
+  color: var(--color-dnd-purple-hover);
+  text-decoration: underline;
+}
+
+.tiptap-editor .ProseMirror img,
+.rich-text-content img {
+  display: block;
+  max-width: 100%;
+  max-height: 320px;
+  margin: 0.5rem 0;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-dnd-border);
+}
+
+.rich-text-content {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: #d1d5db;
+  word-break: break-word;
+}
+
+.rich-text-content p {
+  margin: 0.25rem 0;
+}
+
+.rich-text-content a {
+  color: var(--color-dnd-purple-hover);
+  text-decoration: underline;
+}
+
+.rich-text-content a:hover {
+  color: var(--color-dnd-gold-hover);
+}
+
+.rich-text-content ul,
+.rich-text-content ol {
+  margin: 0.35rem 0;
+  padding-left: 1.25rem;
+}
+
+.rich-text-content blockquote {
+  margin: 0.5rem 0;
+  padding-left: 0.75rem;
+  border-left: 3px solid var(--color-dnd-purple);
+  color: var(--color-dnd-muted);
+}

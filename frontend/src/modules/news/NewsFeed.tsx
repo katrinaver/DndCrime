@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react'
 import { Button } from '../../components/ui/Button'
+import { isRichTextEmpty, RichTextEditor } from '../../components/rich-text'
 import { useAuth } from '../../context/AuthContext'
 import { useNewsStore } from '../../store/newsStore'
 import { NewsPostCard } from './NewsPostCard'
@@ -13,18 +14,19 @@ export function NewsFeed() {
   const addComment = useNewsStore((s) => s.addComment)
 
   const currentUser = user?.email?.split('@')[0] ?? 'Игрок'
-  const [newPostText, setNewPostText] = useState('')
+  const [newPostHtml, setNewPostHtml] = useState('')
+  const [editorKey, setEditorKey] = useState(0)
   const [submitting, setSubmitting] = useState(false)
 
   async function handlePublish(e: FormEvent) {
     e.preventDefault()
-    const trimmed = newPostText.trim()
-    if (!trimmed) return
+    if (isRichTextEmpty(newPostHtml)) return
 
     setSubmitting(true)
     try {
-      await publishPost(trimmed)
-      setNewPostText('')
+      await publishPost(newPostHtml)
+      setNewPostHtml('')
+      setEditorKey((key) => key + 1)
     } finally {
       setSubmitting(false)
     }
@@ -38,22 +40,31 @@ export function NewsFeed() {
     <div className="space-y-6">
       <form
         onSubmit={handlePublish}
-        className="rounded-xl border border-dnd-border bg-dnd-card p-5"
+        className="rounded-xl border border-dnd-border bg-dnd-card p-5 shadow-lg shadow-black/10"
       >
-        <h3 className="mb-3 text-sm font-medium text-white">Новая публикация</h3>
-        <textarea
-          value={newPostText}
-          onChange={(e) => setNewPostText(e.target.value)}
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-base font-semibold text-white">Новая публикация</h3>
+            <p className="mt-1 text-sm text-dnd-muted">
+              Форматирование, ссылки, смайлики и вложения до 2 МБ
+            </p>
+          </div>
+          <span className="shrink-0 rounded-full border border-dnd-border bg-dnd-dark px-3 py-1 text-xs text-dnd-muted">
+            {currentUser}
+          </span>
+        </div>
+
+        <RichTextEditor
+          key={editorKey}
           placeholder="Что нового в ваших кампаниях?"
-          rows={3}
-          className="w-full resize-none rounded-lg border border-dnd-border bg-dnd-dark px-4 py-3 text-sm text-white placeholder-gray-500 outline-none transition focus:border-dnd-purple focus:ring-1 focus:ring-dnd-purple"
+          onChange={setNewPostHtml}
         />
-        <div className="mt-3 flex items-center justify-between gap-4">
-          <span className="text-xs text-dnd-muted">Публикуете как {currentUser}</span>
+
+        <div className="mt-4 flex items-center justify-end gap-3">
           <Button
             type="submit"
             className="!w-auto px-6"
-            disabled={!newPostText.trim()}
+            disabled={isRichTextEmpty(newPostHtml)}
             loading={submitting}
           >
             Опубликовать
@@ -70,7 +81,9 @@ export function NewsFeed() {
       {loading && posts.length === 0 ? (
         <p className="text-center text-sm text-dnd-muted">Загрузка новостей…</p>
       ) : posts.length === 0 ? (
-        <p className="text-center text-sm text-dnd-muted">Новостей пока нет</p>
+        <div className="rounded-xl border border-dashed border-dnd-border bg-dnd-card/40 px-6 py-12 text-center">
+          <p className="text-sm text-dnd-muted">Новостей пока нет — напишите первую публикацию</p>
+        </div>
       ) : (
         <div className="space-y-4">
           {posts.map((post) => (

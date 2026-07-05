@@ -71,6 +71,8 @@ func main() {
 				r.Route("/chat", func(r chi.Router) {
 					r.Get("/messages", h.ListCampaignChatMessages)
 					r.Post("/messages", h.CreateCampaignChatMessage)
+					r.Put("/messages/{messageID}", h.UpdateCampaignChatMessage)
+					r.Delete("/messages/{messageID}", h.DeleteCampaignChatMessage)
 				})
 			})
 		})
