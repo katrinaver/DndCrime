@@ -22,9 +22,12 @@ export function setDevAuthActive(active: boolean) {
   }
 }
 
+// Совпадает с backend/internal/auth/dev.go (DevAuthUserID) и seed-данными store.
+export const DEV_USER_ID = 'user-demo'
+
 export function createDevUser(): User {
   return {
-    id: '00000000-0000-0000-0000-000000000001',
+    id: DEV_USER_ID,
     app_metadata: {},
     user_metadata: { name: 'Dev Adventurer' },
     aud: 'authenticated',

@@ -19,7 +19,26 @@ Portal for offline D&D parties.
 | Yarn   | 1.22.22          | Package manager |
 | Go     | not installed    | Install via [go.dev](https://go.dev/dl/) or use Docker |
 
-## Auth setup (Supabase)
+## Быстрый старт без Supabase (dev-auth)
+
+Для локальной разработки можно обойтись без Supabase: фронт показывает баннер «Войти как Dev», бэкенд принимает токен `dev-stub-token` как пользователя `user-demo` (in-memory store с seed-данными).
+
+```bash
+# Backend
+cp backend/.env.development.example backend/.env
+cd backend && go mod tidy && go run ./cmd/server
+
+# Frontend (в другом терминале)
+cd frontend && yarn install --ignore-engines && yarn dev
+```
+
+1. Откройте http://localhost:5173/login
+2. Нажмите **Войти как dev@dndcrime.local** в жёлтом баннере
+3. API доступен через Vite proxy на `/api` → `localhost:8080`
+
+Фронт подхватывает `frontend/.env.development` автоматически при `yarn dev`. Для Docker test stack уже настроены `backend/.env.test` и `docker-compose.yml`.
+
+## Auth setup (Supabase, production)
 
 1. Create a free project at [supabase.com](https://supabase.com).
 2. In **Project Settings → API**, copy:
@@ -33,6 +52,8 @@ Portal for offline D&D parties.
 cp frontend/.env.example frontend/.env
 cp backend/.env.example backend/.env
 ```
+
+Установите `DEV_AUTH_ENABLED=false` и `VITE_DEV_AUTH_STUB=false` для prod-подобного режима.
 
 ## Local development
 
