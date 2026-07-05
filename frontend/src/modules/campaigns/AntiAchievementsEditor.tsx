@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Button } from '../../components/ui/Button'
-import { STUB_ANTI_ACHIEVEMENT_SUGGESTIONS } from './campaignRoomData'
 
 interface AntiAchievementsEditorProps {
   items: string[]
@@ -47,20 +46,6 @@ export function AntiAchievementsEditor({ items, onChange }: AntiAchievementsEdit
         <Button type="button" className="!w-auto shrink-0 px-4" onClick={() => addItem(draft)}>
           Добавить
         </Button>
-      </div>
-
-      <div className="mt-3 flex flex-wrap gap-2">
-        {STUB_ANTI_ACHIEVEMENT_SUGGESTIONS.map((suggestion) => (
-          <button
-            key={suggestion}
-            type="button"
-            onClick={() => addItem(suggestion)}
-            disabled={items.includes(suggestion)}
-            className="rounded-md border border-dnd-border px-2.5 py-1 text-xs text-dnd-muted transition hover:border-dnd-gold/50 hover:text-dnd-gold disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            + {suggestion}
-          </button>
-        ))}
       </div>
 
       {items.length > 0 && (

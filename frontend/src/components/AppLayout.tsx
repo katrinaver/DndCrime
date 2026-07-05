@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext'
 import { CalendarProvider } from '../modules/calendar'
 import { CampaignProvider } from '../modules/campaigns'
 import { MiniCalendarWidget } from '../modules/calendar/MiniCalendarWidget'
+import { NotificationBell, NotificationProvider } from '../modules/notifications'
+import { useApiBootstrap } from '../store/useApiBootstrap'
 import { Button } from './ui/Button'
 
 const navItems = [
@@ -26,6 +28,7 @@ function navLinkClass({ isActive }: { isActive: boolean }) {
 
 export function AppLayout() {
   const { user, signOut } = useAuth()
+  useApiBootstrap()
   const navigate = useNavigate()
   const location = useLocation()
   const [loggingOut, setLoggingOut] = useState(false)
@@ -40,56 +43,59 @@ export function AppLayout() {
   return (
     <CampaignProvider>
       <CalendarProvider>
-        <div className="min-h-screen">
-        <header className="border-b border-dnd-border bg-dnd-card">
-          <div className="mx-auto max-w-6xl px-6 py-4">
-            <div className="flex items-center justify-between gap-4">
-              <NavLink to="/" className="shrink-0 text-xl font-bold text-dnd-gold">
-                DndCrime
-              </NavLink>
-              <div className="flex items-center gap-4">
-                <span className="hidden text-sm text-dnd-muted md:inline">{user?.email}</span>
-                <Button
-                  variant="secondary"
-                  className="!w-auto"
-                  loading={loggingOut}
-                  onClick={handleLogout}
-                >
-                  Log out
-                </Button>
+        <NotificationProvider>
+          <div className="min-h-screen">
+            <header className="border-b border-dnd-border bg-dnd-card">
+              <div className="mx-auto max-w-6xl px-6 py-4">
+                <div className="flex items-center justify-between gap-4">
+                  <NavLink to="/" className="shrink-0 text-xl font-bold text-dnd-gold">
+                    DndCrime
+                  </NavLink>
+                  <div className="flex items-center gap-2 sm:gap-4">
+                    <span className="hidden text-sm text-dnd-muted md:inline">{user?.email}</span>
+                    <NotificationBell />
+                    <Button
+                      variant="secondary"
+                      className="!w-auto"
+                      loading={loggingOut}
+                      onClick={handleLogout}
+                    >
+                      Log out
+                    </Button>
+                  </div>
+                </div>
+
+                <nav className="mt-4 flex flex-wrap gap-1 border-t border-dnd-border pt-4">
+                  {navItems.map((item) => (
+                    <NavLink key={item.to} to={item.to} className={navLinkClass}>
+                      {item.label}
+                    </NavLink>
+                  ))}
+                </nav>
+              </div>
+            </header>
+
+            <div className="mx-auto max-w-6xl px-6 py-8">
+              {showMiniCalendar && (
+                <div className="mb-6 lg:hidden">
+                  <MiniCalendarWidget />
+                </div>
+              )}
+
+              <div className="flex gap-8">
+                <main className="min-w-0 flex-1">
+                  <Outlet />
+                </main>
+
+                {showMiniCalendar && (
+                  <aside className="hidden w-56 shrink-0 lg:block xl:w-64">
+                    <MiniCalendarWidget />
+                  </aside>
+                )}
               </div>
             </div>
-
-            <nav className="mt-4 flex flex-wrap gap-1 border-t border-dnd-border pt-4">
-              {navItems.map((item) => (
-                <NavLink key={item.to} to={item.to} className={navLinkClass}>
-                  {item.label}
-                </NavLink>
-              ))}
-            </nav>
           </div>
-        </header>
-
-        <div className="mx-auto max-w-6xl px-6 py-8">
-          {showMiniCalendar && (
-            <div className="mb-6 lg:hidden">
-              <MiniCalendarWidget />
-            </div>
-          )}
-
-          <div className="flex gap-8">
-            <main className="min-w-0 flex-1">
-              <Outlet />
-            </main>
-
-            {showMiniCalendar && (
-              <aside className="hidden w-56 shrink-0 lg:block xl:w-64">
-                <MiniCalendarWidget />
-              </aside>
-            )}
-          </div>
-        </div>
-      </div>
+        </NotificationProvider>
       </CalendarProvider>
     </CampaignProvider>
   )

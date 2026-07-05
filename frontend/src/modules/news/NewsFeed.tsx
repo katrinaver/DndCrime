@@ -1,59 +1,37 @@
 import { FormEvent, useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { useAuth } from '../../context/AuthContext'
-import { stubNewsPosts } from './newsData'
+import { useNewsStore } from '../../store/newsStore'
 import { NewsPostCard } from './NewsPostCard'
-import { generateId } from './utils'
-import type { NewsPost } from './types'
 
 export function NewsFeed() {
   const { user } = useAuth()
+  const posts = useNewsStore((s) => s.posts)
+  const loading = useNewsStore((s) => s.loading)
+  const error = useNewsStore((s) => s.error)
+  const publishPost = useNewsStore((s) => s.publishPost)
+  const addComment = useNewsStore((s) => s.addComment)
+
   const currentUser = user?.email?.split('@')[0] ?? 'Игрок'
-
-  const [posts, setPosts] = useState<NewsPost[]>(() =>
-    [...stubNewsPosts].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    ),
-  )
   const [newPostText, setNewPostText] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
-  function handlePublish(e: FormEvent) {
+  async function handlePublish(e: FormEvent) {
     e.preventDefault()
     const trimmed = newPostText.trim()
     if (!trimmed) return
 
-    const post: NewsPost = {
-      id: generateId(),
-      author: currentUser,
-      content: trimmed,
-      createdAt: new Date().toISOString(),
-      comments: [],
+    setSubmitting(true)
+    try {
+      await publishPost(trimmed)
+      setNewPostText('')
+    } finally {
+      setSubmitting(false)
     }
-
-    setPosts((prev) => [post, ...prev])
-    setNewPostText('')
   }
 
-  function handleAddComment(postId: string, content: string) {
-    setPosts((prev) =>
-      prev.map((post) =>
-        post.id === postId
-          ? {
-              ...post,
-              comments: [
-                ...post.comments,
-                {
-                  id: generateId(),
-                  postId,
-                  author: currentUser,
-                  content,
-                  createdAt: new Date().toISOString(),
-                },
-              ],
-            }
-          : post,
-      ),
-    )
+  async function handleAddComment(postId: string, content: string) {
+    await addComment(postId, content)
   }
 
   return (
@@ -72,22 +50,39 @@ export function NewsFeed() {
         />
         <div className="mt-3 flex items-center justify-between gap-4">
           <span className="text-xs text-dnd-muted">Публикуете как {currentUser}</span>
-          <Button type="submit" className="!w-auto px-6" disabled={!newPostText.trim()}>
+          <Button
+            type="submit"
+            className="!w-auto px-6"
+            disabled={!newPostText.trim()}
+            loading={submitting}
+          >
             Опубликовать
           </Button>
         </div>
       </form>
 
-      <div className="space-y-4">
-        {posts.map((post) => (
-          <NewsPostCard
-            key={post.id}
-            post={post}
-            currentUser={currentUser}
-            onAddComment={handleAddComment}
-          />
-        ))}
-      </div>
+      {error && (
+        <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {error}
+        </p>
+      )}
+
+      {loading && posts.length === 0 ? (
+        <p className="text-center text-sm text-dnd-muted">Загрузка новостей…</p>
+      ) : posts.length === 0 ? (
+        <p className="text-center text-sm text-dnd-muted">Новостей пока нет</p>
+      ) : (
+        <div className="space-y-4">
+          {posts.map((post) => (
+            <NewsPostCard
+              key={post.id}
+              post={post}
+              currentUser={currentUser}
+              onAddComment={handleAddComment}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

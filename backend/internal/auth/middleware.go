@@ -15,10 +15,21 @@ const UserContextKey contextKey = "user"
 
 type Claims struct {
 	Email string `json:"email"`
+	Sub   string `json:"sub"`
 	jwt.RegisteredClaims
 }
 
-func Middleware(jwtSecret string) func(http.Handler) http.Handler {
+type User struct {
+	ID    string
+	Email string
+}
+
+type MiddlewareOptions struct {
+	JWTSecret      string
+	DevAuthEnabled bool
+}
+
+func Middleware(opts MiddlewareOptions) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
@@ -33,12 +44,23 @@ func Middleware(jwtSecret string) func(http.Handler) http.Handler {
 				return
 			}
 
+			if opts.DevAuthEnabled && tokenString == DevAuthToken {
+				ctx := context.WithValue(r.Context(), UserContextKey, devAuthClaims())
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
+
+			if opts.JWTSecret == "" {
+				http.Error(w, `{"error":"invalid or expired token"}`, http.StatusUnauthorized)
+				return
+			}
+
 			claims := &Claims{}
 			token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
 				if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 					return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 				}
-				return []byte(jwtSecret), nil
+				return []byte(opts.JWTSecret), nil
 			})
 
 			if err != nil || !token.Valid {
@@ -55,4 +77,19 @@ func Middleware(jwtSecret string) func(http.Handler) http.Handler {
 func ClaimsFromContext(ctx context.Context) (*Claims, bool) {
 	claims, ok := ctx.Value(UserContextKey).(*Claims)
 	return claims, ok
+}
+
+func UserFromContext(ctx context.Context) (User, bool) {
+	claims, ok := ClaimsFromContext(ctx)
+	if !ok {
+		return User{}, false
+	}
+	userID := claims.Sub
+	if userID == "" {
+		userID = claims.RegisteredClaims.Subject
+	}
+	if userID == "" {
+		userID = claims.Email
+	}
+	return User{ID: userID, Email: claims.Email}, true
 }

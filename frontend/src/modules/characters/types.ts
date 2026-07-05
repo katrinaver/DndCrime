@@ -62,6 +62,20 @@ export interface CharacterListItem {
   updatedAt: string
 }
 
+/** Публичная карточка персонажа в кампании (без полного листа). */
+export interface CharacterSummary {
+  id: string
+  name: string
+  className: string
+  level: number
+  species: string
+  playerName: string
+  alignment: string
+  personalityTraits?: string
+  avatarUrl?: string
+  antiAchievements?: CharacterAntiAchievement[]
+}
+
 export interface CampaignOption {
   id: string
   name: string

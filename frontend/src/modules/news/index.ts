@@ -1,5 +1,2 @@
 export { NewsFeed } from './NewsFeed'
-export { NewsPostCard } from './NewsPostCard'
-export { NewsCommentItem } from './NewsCommentItem'
-export { stubNewsPosts } from './newsData'
 export type { NewsPost, NewsComment } from './types'

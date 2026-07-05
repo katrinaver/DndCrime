@@ -4,7 +4,9 @@ export const DEV_AUTH_STORAGE_KEY = 'dndcrime-dev-auth'
 export const DEV_USER_EMAIL = 'dev@dndcrime.local'
 
 export function isDevAuthStubEnabled(): boolean {
-  return import.meta.env.DEV && import.meta.env.VITE_DEV_AUTH_STUB === 'true'
+  if (import.meta.env.VITE_DEV_AUTH_STUB !== 'true') return false
+  if (import.meta.env.DEV) return true
+  return import.meta.env.VITE_DEV_AUTH_ALLOW_BUILD === 'true'
 }
 
 export function isDevAuthActive(): boolean {

@@ -1,8 +1,16 @@
+import { useEffect } from 'react'
 import { NavLink, Outlet, Navigate, useParams } from 'react-router-dom'
 import { BackLink } from '../../components/BackLink'
+import { useCharacterStore } from '../../store/characterStore'
 import { useCampaigns } from './CampaignContext'
-import { getCharacterByCampaignId } from '../characters/characterData'
 import type { CampaignStatus } from './types'
+import type { Campaign } from './types'
+import type { CharacterSheet } from '../characters/types'
+
+export type CampaignRoomContext = {
+  campaign: Campaign
+  character: CharacterSheet | undefined
+}
 
 const statusLabels: Record<CampaignStatus, string> = {
   active: 'Активна',
@@ -35,8 +43,15 @@ function roomNavClass({ isActive }: { isActive: boolean }) {
 export function CampaignRoomLayout() {
   const { campaignId } = useParams<{ campaignId: string }>()
   const { campaigns, userCampaignIds } = useCampaigns()
+  const getCharacterByCampaignId = useCharacterStore((s) => s.getCharacterByCampaignId)
+  const fetchCharacters = useCharacterStore((s) => s.fetchCharacters)
+
   const campaign = campaigns.find((c) => c.id === campaignId)
   const character = campaignId ? getCharacterByCampaignId(campaignId) : undefined
+
+  useEffect(() => {
+    void fetchCharacters()
+  }, [fetchCharacters])
 
   if (!campaignId || !campaign || !userCampaignIds.includes(campaignId)) {
     return <Navigate to="/campaigns" replace />
@@ -96,12 +111,4 @@ export function CampaignRoomLayout() {
       <Outlet context={{ campaign, character }} />
     </div>
   )
-}
-
-import type { Campaign } from './types'
-import type { CharacterSheet } from '../characters/types'
-
-export type CampaignRoomContext = {
-  campaign: Campaign
-  character: CharacterSheet | undefined
 }

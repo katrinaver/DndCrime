@@ -1,16 +1,36 @@
+import { useEffect } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { BackLink } from '../components/BackLink'
 import { CharacterSheetForm } from '../modules/characters/CharacterSheetForm'
 import { QuestionnaireForm } from '../modules/characters/QuestionnaireForm'
-import { getCharacterById } from '../modules/characters/characterData'
 import { useCampaigns } from '../modules/campaigns/CampaignContext'
 import { creationTypeLabels } from '../modules/characters/utils'
 import { GENERAL_QUESTIONNAIRE_FIELDS } from '../modules/characters/types'
+import { useCharacterStore } from '../store/characterStore'
 
 export function CharacterSheetPage() {
   const { id } = useParams<{ id: string }>()
-  const { getQuestionnaireConfig } = useCampaigns()
-  const character = id ? getCharacterById(id) : undefined
+  const { getQuestionnaireConfig, fetchQuestionnaire } = useCampaigns()
+  const character = useCharacterStore((s) => (id ? s.getCharacterById(id) : undefined))
+  const loading = useCharacterStore((s) => s.loading)
+  const fetchCharacter = useCharacterStore((s) => s.fetchCharacter)
+
+  useEffect(() => {
+    if (!id) return
+    void fetchCharacter(id)
+  }, [id, fetchCharacter])
+
+  useEffect(() => {
+    if (character?.campaignId) {
+      void fetchQuestionnaire(character.campaignId)
+    }
+  }, [character?.campaignId, fetchQuestionnaire])
+
+  if (loading && !character) {
+    return (
+      <div className="mt-8 text-sm text-dnd-muted">Загрузка персонажа…</div>
+    )
+  }
 
   if (!character) {
     return <Navigate to="/characters" replace />
@@ -56,12 +76,6 @@ export function CharacterSheetPage() {
 
       {(character.creationType === 'classic' || character.creationType === 'campaign') && (
         <CharacterSheetForm sheet={character} readOnly />
-      )}
-
-      {character.creationType === 'general' && !character.className && (
-        <div className="rounded-xl border border-dnd-border bg-dnd-card p-6 text-sm text-dnd-muted">
-          Лист D&amp;D ещё не заполнен — персонаж создан только через общую анкету.
-        </div>
       )}
     </div>
   )

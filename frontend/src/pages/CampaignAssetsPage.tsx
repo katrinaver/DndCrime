@@ -1,6 +1,12 @@
 import { useOutletContext } from 'react-router-dom'
 import type { CampaignRoomContext } from '../modules/campaigns/CampaignRoomLayout'
-import { getCampaignAssets, type CampaignAsset } from '../modules/campaigns/campaignRoomData'
+
+export interface CampaignAsset {
+  id: string
+  title: string
+  type: 'map' | 'handout' | 'note' | 'link'
+  description: string
+}
 
 const assetTypeLabels: Record<CampaignAsset['type'], string> = {
   map: 'Карта',
@@ -17,8 +23,8 @@ const assetTypeStyles: Record<CampaignAsset['type'], string> = {
 }
 
 export function CampaignAssetsPage() {
-  const { campaign } = useOutletContext<CampaignRoomContext>()
-  const assets = getCampaignAssets(campaign.id)
+  const { campaign: _campaign } = useOutletContext<CampaignRoomContext>()
+  const assets: CampaignAsset[] = []
 
   return (
     <div className="rounded-xl border border-dnd-border bg-dnd-card p-6">
@@ -28,7 +34,9 @@ export function CampaignAssetsPage() {
       </p>
 
       {assets.length === 0 ? (
-        <p className="mt-6 text-sm text-dnd-muted">Материалы пока не добавлены</p>
+        <p className="mt-6 text-sm text-dnd-muted">
+          Материалы пока не добавлены. API для ассетов будет подключён позже.
+        </p>
       ) : (
         <ul className="mt-6 grid gap-4 sm:grid-cols-2">
           {assets.map((asset) => (

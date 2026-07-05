@@ -1,13 +1,21 @@
+import { useEffect } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
-import { getCharactersByCampaignId } from '../modules/characters/characterData'
+import { useCharacterStore } from '../store/characterStore'
 import type { CampaignRoomContext } from '../modules/campaigns/CampaignRoomLayout'
 
 export function CampaignAchievementsPage() {
   const { campaign, character } = useOutletContext<CampaignRoomContext>()
+  const party = useCharacterStore((s) => s.getPartyByCampaignId(campaign.id))
+  const fetchParty = useCharacterStore((s) => s.fetchParty)
+
   const myEarned = character?.antiAchievements ?? []
   const myEarnedTitles = new Set(myEarned.map((item) => item.title))
 
-  const hallOfShame = getCharactersByCampaignId(campaign.id).flatMap((c) =>
+  useEffect(() => {
+    void fetchParty(campaign.id)
+  }, [campaign.id, fetchParty])
+
+  const hallOfShame = party.flatMap((c) =>
     (c.antiAchievements ?? []).map((achievement) => ({
       ...achievement,
       characterName: c.name,

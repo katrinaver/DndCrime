@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from 'react'
 import { useCampaigns } from '../campaigns/CampaignContext'
-import { stubCalendarEvents } from './calendarEvents'
+import { useCalendarStore } from '../../store/calendarStore'
 import { groupEventsByDate } from './utils'
 import type { CalendarEvent, CampaignCalendarEventInput } from './types'
 
@@ -16,26 +16,27 @@ interface CalendarContextValue {
   viewDate: Date
   events: CalendarEvent[]
   eventsByDate: Map<string, CalendarEvent[]>
+  loading: boolean
+  error: string | null
   setSelectedDate: (date: Date) => void
   setViewDate: (date: Date) => void
   goToPrevMonth: () => void
   goToNextMonth: () => void
   goToToday: () => void
-  addCampaignEvent: (input: CampaignCalendarEventInput) => void
+  addCampaignEvent: (input: CampaignCalendarEventInput) => Promise<CalendarEvent | undefined>
 }
 
 const CalendarContext = createContext<CalendarContextValue | null>(null)
 
 export function CalendarProvider({ children }: { children: ReactNode }) {
   const { userCampaignIds } = useCampaigns()
+  const allEvents = useCalendarStore((s) => s.events)
+  const loading = useCalendarStore((s) => s.loading)
+  const error = useCalendarStore((s) => s.error)
+  const addCampaignEventStore = useCalendarStore((s) => s.addCampaignEvent)
+
   const [selectedDate, setSelectedDate] = useState(() => new Date())
   const [viewDate, setViewDate] = useState(() => new Date())
-  const [dynamicEvents, setDynamicEvents] = useState<CalendarEvent[]>([])
-
-  const allEvents = useMemo(
-    () => [...stubCalendarEvents, ...dynamicEvents],
-    [dynamicEvents],
-  )
 
   const events = useMemo(
     () =>
@@ -61,18 +62,10 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
     setSelectedDate(today)
   }, [])
 
-  const addCampaignEvent = useCallback((input: CampaignCalendarEventInput) => {
-    const event: CalendarEvent = {
-      id: `evt-${Date.now()}`,
-      date: input.date,
-      time: input.time,
-      title: input.title,
-      campaignId: input.campaignId,
-      campaign: input.campaignName,
-      place: input.place,
-    }
-    setDynamicEvents((prev) => [...prev, event])
-  }, [])
+  const addCampaignEvent = useCallback(
+    (input: CampaignCalendarEventInput) => addCampaignEventStore(input),
+    [addCampaignEventStore],
+  )
 
   const value = useMemo(
     () => ({
@@ -80,6 +73,8 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
       viewDate,
       events,
       eventsByDate,
+      loading,
+      error,
       setSelectedDate,
       setViewDate,
       goToPrevMonth,
@@ -92,6 +87,8 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
       viewDate,
       events,
       eventsByDate,
+      loading,
+      error,
       goToPrevMonth,
       goToNextMonth,
       goToToday,

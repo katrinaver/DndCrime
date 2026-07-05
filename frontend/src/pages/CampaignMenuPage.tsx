@@ -1,14 +1,20 @@
+import { useEffect } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
-import { getCharactersByCampaignId } from '../modules/characters/characterData'
 import { CampaignPartyMemberCard } from '../modules/campaigns/CampaignPartyMemberCard'
 import type { CampaignRoomContext } from '../modules/campaigns/CampaignRoomLayout'
+import { useCharacterStore } from '../store/characterStore'
 
 export function CampaignMenuPage() {
   const { campaign, character } = useOutletContext<CampaignRoomContext>()
+  const party = useCharacterStore((s) => s.getPartyByCampaignId(campaign.id))
+  const fetchParty = useCharacterStore((s) => s.fetchParty)
+
   const myAchievements = character?.antiAchievements ?? []
-  const partyMembers = getCharactersByCampaignId(campaign.id).filter(
-    (c) => c.id !== character?.id,
-  )
+  const partyMembers = party.filter((member) => member.id !== character?.id)
+
+  useEffect(() => {
+    void fetchParty(campaign.id)
+  }, [campaign.id, fetchParty])
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">

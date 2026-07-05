@@ -1,27 +1,41 @@
 import { useEffect, useState } from 'react'
 import { Button } from '../components/ui/Button'
 import { useAuth } from '../context/AuthContext'
-import { loadUserNotes, saveUserNotes } from '../modules/notes/notesStorage'
+import { useNotesStore } from '../store/notesStore'
 
 export function NotesPage() {
   const { user } = useAuth()
-  const userId = user?.id ?? 'anonymous'
+  const content = useNotesStore((s) => s.content)
+  const loading = useNotesStore((s) => s.loading)
+  const saving = useNotesStore((s) => s.saving)
+  const error = useNotesStore((s) => s.error)
+  const fetchNotes = useNotesStore((s) => s.fetchNotes)
+  const saveNotes = useNotesStore((s) => s.saveNotes)
 
-  const [notes, setNotes] = useState('')
+  const [draft, setDraft] = useState('')
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    setNotes(loadUserNotes(userId))
-  }, [userId])
+    if (!user) return
+    void fetchNotes()
+  }, [user, fetchNotes])
+
+  useEffect(() => {
+    setDraft(content)
+  }, [content])
 
   function handleChange(value: string) {
     setSaved(false)
-    setNotes(value)
+    setDraft(value)
   }
 
-  function handleSave() {
-    saveUserNotes(userId, notes)
-    setSaved(true)
+  async function handleSave() {
+    try {
+      await saveNotes(draft)
+      setSaved(true)
+    } catch {
+      // error shown via store
+    }
   }
 
   return (
@@ -35,22 +49,32 @@ export function NotesPage() {
         </div>
         <div className="flex items-center gap-3">
           {saved && <span className="text-sm text-emerald-400">Сохранено</span>}
-          <Button className="!w-auto px-6" onClick={handleSave}>
+          <Button className="!w-auto px-6" onClick={handleSave} loading={saving}>
             Сохранить
           </Button>
         </div>
       </div>
 
+      {error && (
+        <p className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {error}
+        </p>
+      )}
+
       <div className="rounded-xl border border-dnd-border bg-dnd-card p-6">
-        <textarea
-          value={notes}
-          onChange={(e) => handleChange(e.target.value)}
-          placeholder="Запишите идеи, планы, напоминания..."
-          rows={18}
-          className="min-h-[320px] w-full resize-y rounded-lg border border-dnd-border bg-dnd-dark px-4 py-3 text-sm leading-relaxed text-white placeholder-gray-500 outline-none transition focus:border-dnd-purple focus:ring-1 focus:ring-dnd-purple"
-        />
+        {loading ? (
+          <p className="text-sm text-dnd-muted">Загрузка…</p>
+        ) : (
+          <textarea
+            value={draft}
+            onChange={(e) => handleChange(e.target.value)}
+            placeholder="Запишите идеи, планы, напоминания..."
+            rows={18}
+            className="min-h-[320px] w-full resize-y rounded-lg border border-dnd-border bg-dnd-dark px-4 py-3 text-sm leading-relaxed text-white placeholder-gray-500 outline-none transition focus:border-dnd-purple focus:ring-1 focus:ring-dnd-purple"
+          />
+        )}
         <p className="mt-3 text-xs text-dnd-muted">
-          Заметки сохраняются локально в браузере — позже синхронизируем с аккаунтом
+          Заметки синхронизируются с аккаунтом через API
         </p>
       </div>
     </div>

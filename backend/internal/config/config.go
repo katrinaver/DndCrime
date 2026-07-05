@@ -9,6 +9,7 @@ type Config struct {
 	Port              string
 	SupabaseJWTSecret string
 	AllowedOrigins    []string
+	DevAuthEnabled    bool
 }
 
 func Load() Config {
@@ -21,6 +22,7 @@ func Load() Config {
 		Port:              envOrDefault("PORT", "8080"),
 		SupabaseJWTSecret: os.Getenv("SUPABASE_JWT_SECRET"),
 		AllowedOrigins:    strings.Split(origins, ","),
+		DevAuthEnabled:    os.Getenv("DEV_AUTH_ENABLED") == "true",
 	}
 }
 

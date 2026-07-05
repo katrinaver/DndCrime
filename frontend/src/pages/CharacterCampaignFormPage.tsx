@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { BackLink } from '../components/BackLink'
 import { Button } from '../components/ui/Button'
@@ -7,11 +7,14 @@ import { CharacterSheetForm } from '../modules/characters/CharacterSheetForm'
 import { QuestionnaireForm } from '../modules/characters/QuestionnaireForm'
 import { emptyCharacterSheet } from '../modules/characters/characterData'
 import type { CharacterSheet } from '../modules/characters/types'
+import { useCharacterStore } from '../store/characterStore'
 
 export function CharacterCampaignFormPage() {
   const { campaignId } = useParams<{ campaignId: string }>()
   const navigate = useNavigate()
-  const { campaigns, getQuestionnaireConfig } = useCampaigns()
+  const { campaigns, getQuestionnaireConfig, fetchQuestionnaire } = useCampaigns()
+  const createCharacter = useCharacterStore((s) => s.createCharacter)
+
   const config = campaignId ? getQuestionnaireConfig(campaignId) : undefined
   const campaign = campaigns.find((c) => c.id === campaignId)
 
@@ -22,9 +25,19 @@ export function CharacterCampaignFormPage() {
     campaignId: campaignId ?? '',
     campaignName: campaign?.name ?? '',
   }))
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  if (!campaignId || !config || !campaign) {
+  useEffect(() => {
+    if (campaignId) void fetchQuestionnaire(campaignId)
+  }, [campaignId, fetchQuestionnaire])
+
+  if (!campaignId || !campaign) {
     return <Navigate to="/characters/new/campaign" replace />
+  }
+
+  if (!config) {
+    return <div className="mt-8 text-sm text-dnd-muted">Загрузка анкеты кампании…</div>
   }
 
   function handleQuestionnaireChange(id: string, value: string) {
@@ -35,8 +48,23 @@ export function CharacterCampaignFormPage() {
     setSheet((prev) => ({ ...prev, ...updates }))
   }
 
-  function handleSubmit() {
-    navigate('/characters')
+  async function handleSubmit() {
+    if (!campaign) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      await createCharacter({
+        ...sheet,
+        campaignId,
+        campaignName: campaign.name,
+        questionnaireAnswers: questionnaire,
+      })
+      navigate('/characters')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось создать персонажа')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -47,6 +75,12 @@ export function CharacterCampaignFormPage() {
         <h2 className="text-2xl font-semibold text-white">{config.title}</h2>
         <p className="mt-1 text-sm text-dnd-muted">{config.description}</p>
       </div>
+
+      {error && (
+        <p className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {error}
+        </p>
+      )}
 
       <div className="space-y-6">
         <QuestionnaireForm
@@ -70,7 +104,7 @@ export function CharacterCampaignFormPage() {
         >
           Отмена
         </Button>
-        <Button className="!w-auto px-6" onClick={handleSubmit}>
+        <Button className="!w-auto px-6" onClick={() => void handleSubmit()} loading={submitting}>
           Создать персонажа
         </Button>
       </div>

@@ -2,9 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BackLink } from '../components/BackLink'
 import { Button } from '../components/ui/Button'
-import { useCalendar } from '../modules/calendar'
-import { DND_LEVELS } from '../modules/characters/sheetOptions'
 import { useCampaigns } from '../modules/campaigns/CampaignContext'
+import { DND_LEVELS } from '../modules/characters/sheetOptions'
 import { QuestionnaireBuilder } from '../modules/campaigns/QuestionnaireBuilder'
 import { AntiAchievementsEditor } from '../modules/campaigns/AntiAchievementsEditor'
 import { createDefaultQuestionnaireSettings } from '../modules/campaigns/questionnaireUtils'
@@ -95,7 +94,6 @@ function FormSelect({
 export function CampaignCreatePage() {
   const navigate = useNavigate()
   const { createCampaign } = useCampaigns()
-  const { addCampaignEvent } = useCalendar()
 
   const [form, setForm] = useState(emptyForm)
   const [questionnaireOpen, setQuestionnaireOpen] = useState(false)
@@ -103,28 +101,26 @@ export function CampaignCreatePage() {
     createDefaultQuestionnaireSettings,
   )
   const [antiAchievementPool, setAntiAchievementPool] = useState<string[]>([])
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   function updateForm<K extends keyof CampaignCreateInput>(key: K, value: CampaignCreateInput[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    setSubmitting(true)
+    setError(null)
 
-    const campaign = createCampaign(form, questionnaireSettings, antiAchievementPool)
-
-    if (form.sessionDate) {
-      addCampaignEvent({
-        campaignId: campaign.id,
-        campaignName: campaign.name,
-        date: form.sessionDate,
-        time: form.sessionTime || undefined,
-        place: form.place || undefined,
-        title: `Сессия: ${campaign.name}`,
-      })
+    try {
+      await createCampaign(form, questionnaireSettings, antiAchievementPool)
+      navigate('/campaigns')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось создать кампанию')
+    } finally {
+      setSubmitting(false)
     }
-
-    navigate('/campaigns')
   }
 
   return (
@@ -137,6 +133,12 @@ export function CampaignCreatePage() {
           Заполните параметры кампании и настройте анкету для персонажей
         </p>
       </div>
+
+      {error && (
+        <p className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {error}
+        </p>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <section className="rounded-xl border border-dnd-border bg-dnd-card p-6">
@@ -154,7 +156,7 @@ export function CampaignCreatePage() {
             />
             <FormInput
               id="sessionDate"
-              label="Дата первой сессии"
+              label="Дата ближайшей сессии"
               type="date"
               value={form.sessionDate}
               onChange={(v) => updateForm('sessionDate', v)}
@@ -168,33 +170,23 @@ export function CampaignCreatePage() {
             />
             <FormInput
               id="place"
-              label="Место"
+              label="Место / платформа"
               value={form.place}
               onChange={(v) => updateForm('place', v)}
-              placeholder="Discord, Zoom, адрес клуба..."
+              placeholder="Discord, Zoom, офлайн..."
             />
-          </div>
-          {form.sessionDate && (
-            <p className="mt-3 text-xs text-dnd-muted">
-              Событие появится в календаре только у участников этой кампании
-            </p>
-          )}
-        </section>
-
-        <section className="rounded-xl border border-dnd-border bg-dnd-card p-6">
-          <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-dnd-muted">
-            Параметры игры
-          </h3>
-          <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <label htmlFor="setting" className="mb-1.5 block text-sm font-medium text-gray-300">
+              <label
+                htmlFor="setting"
+                className="mb-1.5 block text-sm font-medium text-gray-300"
+              >
                 Сеттинг
               </label>
               <textarea
                 id="setting"
                 value={form.setting}
                 onChange={(e) => updateForm('setting', e.target.value)}
-                placeholder="Мир, эпоха, тон кампании, домашние правила..."
+                placeholder="Опишите мир, тон и особенности кампании..."
                 rows={3}
                 className="w-full resize-none rounded-lg border border-dnd-border bg-dnd-dark px-4 py-2.5 text-sm text-white outline-none transition focus:border-dnd-purple focus:ring-1 focus:ring-dnd-purple"
               />
@@ -272,7 +264,7 @@ export function CampaignCreatePage() {
           >
             Отмена
           </Button>
-          <Button type="submit" className="!w-auto px-6">
+          <Button type="submit" className="!w-auto px-6" loading={submitting}>
             Создать кампанию
           </Button>
         </div>
