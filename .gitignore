@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# Local Go toolchain (use system Go or Docker in CI)
+.go-toolchain/
+
 # Build
 dist/
 backend/server
