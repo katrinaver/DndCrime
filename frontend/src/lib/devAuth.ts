@@ -1,4 +1,4 @@
-import type { Session, User } from '@supabase/supabase-js'
+import type { AuthSession, AuthUser } from './authTypes'
 
 export const DEV_AUTH_STORAGE_KEY = 'dndcrime-dev-auth'
 export const DEV_USER_EMAIL = 'dev@dndcrime.local'
@@ -25,23 +25,17 @@ export function setDevAuthActive(active: boolean) {
 // Совпадает с backend/internal/auth/dev.go (DevAuthUserID) и seed-данными store.
 export const DEV_USER_ID = 'user-demo'
 
-export function createDevUser(): User {
+export function createDevUser(): AuthUser {
   return {
     id: DEV_USER_ID,
-    app_metadata: {},
-    user_metadata: { name: 'Dev Adventurer' },
-    aud: 'authenticated',
-    created_at: new Date().toISOString(),
     email: DEV_USER_EMAIL,
-  } as User
+    name: 'Dev Adventurer',
+  }
 }
 
-export function createDevSession(user: User): Session {
+export function createDevSession(user: AuthUser): AuthSession {
   return {
     access_token: 'dev-stub-token',
-    refresh_token: 'dev-stub-refresh',
-    expires_in: 3600,
-    expires_at: Math.floor(Date.now() / 1000) + 3600,
     token_type: 'bearer',
     user,
   }

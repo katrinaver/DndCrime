@@ -21,7 +21,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       loadingByCampaign: { ...state.loadingByCampaign, [campaignId]: true },
     }))
     try {
-      const messages = await chatApi.fetchCampaignChatMessages(campaignId)
+      const data = await chatApi.fetchCampaignChatMessages(campaignId)
+      const messages = Array.isArray(data) ? data : []
       set((state) => ({
         messagesByCampaign: { ...state.messagesByCampaign, [campaignId]: messages },
         loadingByCampaign: { ...state.loadingByCampaign, [campaignId]: false },

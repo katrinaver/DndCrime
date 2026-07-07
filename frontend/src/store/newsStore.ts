@@ -26,7 +26,8 @@ export const useNewsStore = create<NewsState>((set) => ({
   fetchPosts: async () => {
     set({ loading: true, error: null })
     try {
-      const posts = await newsApi.fetchNewsPosts()
+      const data = await newsApi.fetchNewsPosts()
+      const posts = Array.isArray(data) ? data : []
       set({ posts: sortPosts(posts), loading: false })
     } catch (err) {
       set({

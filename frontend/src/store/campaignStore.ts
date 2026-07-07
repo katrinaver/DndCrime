@@ -29,7 +29,8 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
   fetchCampaigns: async () => {
     set({ loading: true, error: null })
     try {
-      const campaigns = await campaignsApi.fetchCampaigns()
+      const data = await campaignsApi.fetchCampaigns()
+      const campaigns = Array.isArray(data) ? data : []
       set({ campaigns, loading: false })
     } catch (err) {
       set({

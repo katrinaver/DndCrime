@@ -30,7 +30,8 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
   fetchCharacters: async () => {
     set({ loading: true, error: null })
     try {
-      const list = await charactersApi.fetchCharacters()
+      const data = await charactersApi.fetchCharacters()
+      const list = Array.isArray(data) ? data : []
       const sheets: Record<string, CharacterSheet> = {}
       await Promise.all(
         list.map(async (item) => {
@@ -73,7 +74,8 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
     if (cached) return cached
 
     try {
-      const party = await campaignsApi.fetchCampaignParty(campaignId)
+      const data = await campaignsApi.fetchCampaignParty(campaignId)
+      const party = Array.isArray(data) ? data : []
       set((state) => ({
         partyByCampaign: { ...state.partyByCampaign, [campaignId]: party },
       }))

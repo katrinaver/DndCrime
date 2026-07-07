@@ -1,7 +1,5 @@
 import DOMPurify from 'dompurify'
 
-const MAX_ATTACHMENT_BYTES = 2 * 1024 * 1024
-
 export function sanitizeRichText(html: string): string {
   return DOMPurify.sanitize(html, {
     ADD_ATTR: ['target', 'download'],
@@ -38,20 +36,6 @@ export function isRichTextEmpty(html: string): boolean {
   const hasMedia = /<img[\s>]/i.test(sanitized) || /download=/i.test(sanitized)
 
   return !text && !hasMedia
-}
-
-export function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    if (file.size > MAX_ATTACHMENT_BYTES) {
-      reject(new Error(`Файл слишком большой (макс. ${MAX_ATTACHMENT_BYTES / (1024 * 1024)} МБ)`))
-      return
-    }
-
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(new Error('Не удалось прочитать файл'))
-    reader.readAsDataURL(file)
-  })
 }
 
 export function escapeHtml(text: string): string {

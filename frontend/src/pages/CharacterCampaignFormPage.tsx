@@ -57,6 +57,7 @@ export function CharacterCampaignFormPage() {
         ...sheet,
         campaignId,
         campaignName: campaign.name,
+        avatarFileName: questionnaire.avatar ?? sheet.avatarFileName,
         questionnaireAnswers: questionnaire,
       })
       navigate('/characters')

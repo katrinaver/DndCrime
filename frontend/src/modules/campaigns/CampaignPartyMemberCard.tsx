@@ -1,4 +1,5 @@
 import type { CharacterSummary } from '../characters/types'
+import { isProbablyImageUrl } from '../../lib/media'
 import { getProfileInitials } from '../profile/utils'
 
 interface CampaignPartyMemberCardProps {
@@ -8,12 +9,19 @@ interface CampaignPartyMemberCardProps {
 export function CampaignPartyMemberCard({ character }: CampaignPartyMemberCardProps) {
   const achievements = character.antiAchievements ?? []
   const initials = getProfileInitials(character.name)
+  const avatarIsImage = isProbablyImageUrl(character.avatarUrl)
 
   return (
     <article className="rounded-xl border border-dnd-border bg-dnd-dark/40 p-4">
       <div className="flex gap-4">
         <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-dnd-border bg-dnd-card text-sm font-bold text-dnd-gold">
-          {character.avatarUrl ? (
+          {avatarIsImage ? (
+            <img
+              src={character.avatarUrl}
+              alt={character.name}
+              className="h-full w-full object-cover"
+            />
+          ) : character.avatarUrl ? (
             <span className="px-1 text-center text-[9px] font-normal leading-tight text-dnd-muted">
               {character.avatarUrl}
             </span>

@@ -19,7 +19,8 @@ export const useCalendarStore = create<CalendarState>((set) => ({
   fetchEvents: async () => {
     set({ loading: true, error: null })
     try {
-      const events = await calendarApi.fetchCalendarEvents()
+      const data = await calendarApi.fetchCalendarEvents()
+      const events = Array.isArray(data) ? data : []
       set({ events, loading: false })
     } catch (err) {
       set({

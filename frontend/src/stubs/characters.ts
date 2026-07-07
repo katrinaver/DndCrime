@@ -89,7 +89,7 @@ export const stubCharacterSheets: CharacterSheet[] = [
     ideals: 'Честь отряда важнее личной выгоды.',
     bonds: 'Долг таверне «Красный Дракон» за приют.',
     flaws: 'Слишком прямолинеен в переговорах.',
-    features: 'Боевой стиль: Защита, Второе дыхание, Action Surge.',
+    features: 'Боевой стиль: Защита, Второе дыхание, Всплеск действий.',
     equipment: 'Кольчуга, щит, боевой топор, 20 зм.',
     spells: '',
     creationType: 'campaign',

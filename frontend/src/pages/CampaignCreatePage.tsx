@@ -173,7 +173,7 @@ export function CampaignCreatePage() {
               label="Место / платформа"
               value={form.place}
               onChange={(v) => updateForm('place', v)}
-              placeholder="Discord, Zoom, офлайн..."
+              placeholder="Онлайн, офлайн, адрес встречи..."
             />
             <div className="sm:col-span-2">
               <label

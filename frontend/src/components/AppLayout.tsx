@@ -48,7 +48,7 @@ export function AppLayout() {
             <header className="border-b border-dnd-border bg-dnd-card">
               <div className="mx-auto max-w-6xl px-6 py-4">
                 <div className="flex items-center justify-between gap-4">
-                  <NavLink to="/" className="shrink-0 text-xl font-bold text-dnd-gold">
+                  <NavLink to="/home" className="shrink-0 text-xl font-bold text-dnd-gold">
                     DndCrime
                   </NavLink>
                   <div className="flex items-center gap-2 sm:gap-4">
@@ -60,7 +60,7 @@ export function AppLayout() {
                       loading={loggingOut}
                       onClick={handleLogout}
                     >
-                      Log out
+                      Выйти
                     </Button>
                   </div>
                 </div>

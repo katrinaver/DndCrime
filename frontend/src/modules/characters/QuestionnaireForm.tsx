@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import { uploadFile } from '../../api/uploads'
+import { fileLabelFromUrl, isProbablyImageUrl } from '../../lib/media'
 import type { CampaignFormField } from './types'
 
 interface QuestionnaireFormProps {
@@ -26,8 +29,27 @@ function FieldInput({
   readOnly?: boolean
   onChange?: (value: string) => void
 }) {
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const baseClass =
     'w-full rounded-lg border border-dnd-border bg-dnd-dark px-4 py-2.5 text-sm text-white outline-none transition focus:border-dnd-purple focus:ring-1 focus:ring-dnd-purple disabled:opacity-70'
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+
+    setUploadError(null)
+    setUploading(true)
+    try {
+      const { url } = await uploadFile(file, field.id === 'avatar' ? 'avatar' : 'attachment')
+      onChange?.(url)
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Не удалось загрузить файл')
+    } finally {
+      setUploading(false)
+    }
+  }
 
   if (field.type === 'textarea') {
     return (
@@ -101,21 +123,43 @@ function FieldInput({
   }
 
   if (field.type === 'file') {
+    const isImage = isProbablyImageUrl(value)
+
     if (readOnly) {
       return (
-        <p className="text-sm text-dnd-muted">
-          {value ? `Файл: ${value}` : 'Аватар не загружен'}
-        </p>
+        <div className="text-sm text-dnd-muted">
+          {isImage ? (
+            <img src={value} alt={field.label} className="h-24 w-24 rounded-lg object-cover" />
+          ) : value ? (
+            <a href={value} target="_blank" rel="noopener noreferrer" className="text-dnd-gold hover:underline">
+              {fileLabelFromUrl(value)}
+            </a>
+          ) : (
+            'Файл не загружен'
+          )}
+        </div>
       )
     }
 
     return (
-      <input
-        type="file"
-        accept="image/*"
-        onChange={(e) => onChange?.(e.target.files?.[0]?.name ?? '')}
-        className="block w-full text-sm text-dnd-muted file:mr-3 file:rounded-lg file:border-0 file:bg-dnd-purple/20 file:px-4 file:py-2 file:text-sm file:font-medium file:text-dnd-purple hover:file:bg-dnd-purple/30"
-      />
+      <div className="space-y-2">
+        {isImage ? (
+          <img src={value} alt={field.label} className="h-24 w-24 rounded-lg object-cover" />
+        ) : value ? (
+          <a href={value} target="_blank" rel="noopener noreferrer" className="text-sm text-dnd-gold hover:underline">
+            {fileLabelFromUrl(value)}
+          </a>
+        ) : null}
+        <input
+          type="file"
+          accept={field.id === 'avatar' ? 'image/*' : undefined}
+          disabled={uploading}
+          onChange={(e) => void handleFileChange(e)}
+          className="block w-full text-sm text-dnd-muted file:mr-3 file:rounded-lg file:border-0 file:bg-dnd-purple/20 file:px-4 file:py-2 file:text-sm file:font-medium file:text-dnd-purple hover:file:bg-dnd-purple/30 disabled:opacity-60"
+        />
+        {uploading && <p className="text-xs text-dnd-muted">Загрузка…</p>}
+        {uploadError && <p className="text-xs text-red-400">{uploadError}</p>}
+      </div>
     )
   }
 
