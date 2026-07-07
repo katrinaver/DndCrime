@@ -3,6 +3,11 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "packageManager": "yarn@1.22.22",
+  "engines": {
+    "node": ">=20.14 <21",
+    "yarn": ">=1.22 <2"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

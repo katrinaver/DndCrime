@@ -17,10 +17,12 @@ Portal for offline D&D parties.
 | Tool   | Version      | Notes |
 |--------|--------------|-------|
 | Docker | 29.3.1       | For containerized run |
-| Node   | v20.14.0     | Use `yarn --ignore-engines` |
-| Yarn   | 1.22.22      | Package manager |
+| Node   | v20.14.0     | Run `nvm use` from repo root |
+| Yarn   | 1.22.22      | Frontend package manager |
 | Go     | 1.22         | Install via go.dev or use Docker |
 | MySQL  | 5.7+/8.0     | Required for persistent data |
+
+Для frontend используем только Yarn v1: `yarn.lock` — единственный lockfile. `package-lock.json` намеренно не коммитится, чтобы разные версии `npm` не создавали лишние dependency diff.
 
 ## Быстрый старт без Google/MySQL
 
