@@ -27,6 +27,7 @@ export function CharacterGeneralPage() {
         ...emptyCharacterSheet(),
         creationType: 'general' as const,
         name: values.name ?? 'Без имени',
+        avatarFileName: values.avatar ?? '',
         questionnaireAnswers: values,
       }
       await createCharacter(sheet)

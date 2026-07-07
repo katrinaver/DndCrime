@@ -42,7 +42,7 @@ export function CharacterClassicPage() {
       <div className="mt-4 mb-6">
         <h2 className="text-2xl font-semibold text-white">Новый персонаж</h2>
         <p className="mt-1 text-sm text-dnd-muted">
-          Классический лист персонажа Dungeons &amp; Dragons 5e (редакция 2024)
+          Классический лист персонажа D&amp;D 5e (редакция 2024)
         </p>
       </div>
 

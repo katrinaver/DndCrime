@@ -19,11 +19,14 @@ import { CharacterSheetPage } from './pages/CharacterSheetPage'
 import { CharactersPage } from './pages/CharactersPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { HomePage } from './pages/HomePage'
+import { LandingPage } from './pages/LandingPage'
 import { LoginPage } from './pages/LoginPage'
 import { NewsPage } from './pages/NewsPage'
 import { NotesPage } from './pages/NotesPage'
 import { ProfilePage } from './pages/ProfilePage'
+import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage'
 import { RegisterPage } from './pages/RegisterPage'
+import { TermsOfServicePage } from './pages/TermsOfServicePage'
 
 function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -37,7 +40,7 @@ function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (user) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/home" replace />
   }
 
   return <>{children}</>
@@ -46,6 +49,7 @@ function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   return (
     <Routes>
+      <Route path="/" element={<LandingPage />} />
       <Route
         path="/login"
         element={
@@ -70,10 +74,12 @@ function AppRoutes() {
           </PublicOnlyRoute>
         }
       />
+      <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+      <Route path="/terms-of-service" element={<TermsOfServicePage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
-          <Route path="/" element={<HomePage />} />
+          <Route path="/home" element={<HomePage />} />
           <Route path="/campaigns" element={<CampaignsPage />} />
           <Route path="/campaigns/new" element={<CampaignCreatePage />} />
           <Route path="/campaigns/:campaignId" element={<CampaignRoomLayout />}>

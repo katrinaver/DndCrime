@@ -111,7 +111,7 @@ export function CharacterSheetForm({ sheet, readOnly = false, onChange }: Charac
     <div className="space-y-6">
       <div className="rounded-xl border border-dnd-gold/30 bg-dnd-card p-4 text-center">
         <h3 className="text-xs font-semibold uppercase tracking-widest text-dnd-gold">
-          Dungeons &amp; Dragons — Лист персонажа (5e 2024)
+          Лист персонажа D&amp;D 5e (редакция 2024)
         </h3>
       </div>
 
@@ -141,7 +141,7 @@ export function CharacterSheetForm({ sheet, readOnly = false, onChange }: Charac
             onChange={(v) => onChange?.({ level: Number(v) })}
           />
           <SheetInput
-            label="Вид (Species)"
+            label="Вид"
             value={sheet.species}
             readOnly={readOnly}
             onChange={(v) => onChange?.({ species: v })}
@@ -165,7 +165,7 @@ export function CharacterSheetForm({ sheet, readOnly = false, onChange }: Charac
             onChange={(v) => onChange?.({ alignment: v })}
           />
           <SheetInput
-            label="Опыт (XP)"
+            label="Опыт"
             value={sheet.experiencePoints}
             type="number"
             readOnly={readOnly}
@@ -189,42 +189,42 @@ export function CharacterSheetForm({ sheet, readOnly = false, onChange }: Charac
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
           <AbilityBlock
             label="Сила"
-            abbr="STR"
+            abbr="СИЛ"
             value={sheet.abilities.strength}
             readOnly={readOnly}
             onChange={(v) => updateAbility('strength', v)}
           />
           <AbilityBlock
             label="Ловкость"
-            abbr="DEX"
+            abbr="ЛОВ"
             value={sheet.abilities.dexterity}
             readOnly={readOnly}
             onChange={(v) => updateAbility('dexterity', v)}
           />
           <AbilityBlock
             label="Телосложение"
-            abbr="CON"
+            abbr="ТЕЛ"
             value={sheet.abilities.constitution}
             readOnly={readOnly}
             onChange={(v) => updateAbility('constitution', v)}
           />
           <AbilityBlock
             label="Интеллект"
-            abbr="INT"
+            abbr="ИНТ"
             value={sheet.abilities.intelligence}
             readOnly={readOnly}
             onChange={(v) => updateAbility('intelligence', v)}
           />
           <AbilityBlock
             label="Мудрость"
-            abbr="WIS"
+            abbr="МДР"
             value={sheet.abilities.wisdom}
             readOnly={readOnly}
             onChange={(v) => updateAbility('wisdom', v)}
           />
           <AbilityBlock
             label="Харизма"
-            abbr="CHA"
+            abbr="ХАР"
             value={sheet.abilities.charisma}
             readOnly={readOnly}
             onChange={(v) => updateAbility('charisma', v)}

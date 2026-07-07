@@ -4,24 +4,27 @@ Portal for offline D&D parties.
 
 ## Stack
 
-| Layer    | Technology                          |
-|----------|-------------------------------------|
+| Layer    | Technology                                      |
+|----------|-------------------------------------------------|
 | Frontend | React 18, TypeScript, Vite, Tailwind CSS 4, React Router 7 |
-| Backend  | Go 1.22, Chi router                 |
-| Auth     | [Supabase Auth](https://supabase.com) (free tier, JWT) |
+| Backend  | Go 1.22, Chi router                             |
+| Storage  | MySQL 5.7+/8.0 compatible store                 |
+| Files    | S3-compatible object storage                    |
+| Auth     | Google OAuth ID token + backend-issued app JWT  |
 
 ## Prerequisites
 
-| Tool   | Version (global) | Notes |
-|--------|------------------|-------|
-| Docker | 29.3.1           | For containerized run |
-| Node   | v20.14.0         | Use `yarn --ignore-engines` (some deps want ≥20.19) |
-| Yarn   | 1.22.22          | Package manager |
-| Go     | not installed    | Install via [go.dev](https://go.dev/dl/) or use Docker |
+| Tool   | Version      | Notes |
+|--------|--------------|-------|
+| Docker | 29.3.1       | For containerized run |
+| Node   | v20.14.0     | Use `yarn --ignore-engines` |
+| Yarn   | 1.22.22      | Package manager |
+| Go     | 1.22         | Install via go.dev or use Docker |
+| MySQL  | 5.7+/8.0     | Required for persistent data |
 
-## Быстрый старт без Supabase (dev-auth)
+## Быстрый старт без Google/MySQL
 
-Для локальной разработки можно обойтись без Supabase: фронт показывает баннер «Войти как Dev», бэкенд принимает токен `dev-stub-token` как пользователя `user-demo` (in-memory store с seed-данными).
+Для локальной разработки можно обойтись без внешних сервисов: фронт показывает баннер «Войти как Dev», бэкенд принимает токен `dev-stub-token` как пользователя `user-demo`. Если `MYSQL_DSN` не задан, используется in-memory store с seed-данными.
 
 ```bash
 # Backend
@@ -33,27 +36,52 @@ cd frontend && yarn install --ignore-engines && yarn dev
 ```
 
 1. Откройте http://localhost:5173/login
-2. Нажмите **Войти как dev@dndcrime.local** в жёлтом баннере
-3. API доступен через Vite proxy на `/api` → `localhost:8080`
+2. Нажмите **Войти как dev@dndcrime.local** в dev-баннере
+3. API доступен через Vite proxy на `/api` -> `localhost:8080`
 
-Фронт подхватывает `frontend/.env.development` автоматически при `yarn dev`. Для Docker test stack уже настроены `backend/.env.test` и `docker-compose.yml`.
+## Google OAuth
 
-## Auth setup (Supabase, production)
+1. В Google Cloud Console создайте OAuth 2.0 Client ID типа **Web application**.
+2. Добавьте authorized JavaScript origins:
+   - `http://localhost:5173`
+   - production origin, например `https://dndcrime.example.com`
+3. Укажите один и тот же client id:
 
-1. Create a free project at [supabase.com](https://supabase.com).
-2. In **Project Settings → API**, copy:
-   - **Project URL** → `VITE_SUPABASE_URL`
-   - **anon public key** → `VITE_SUPABASE_ANON_KEY`
-   - **JWT Secret** → `SUPABASE_JWT_SECRET` (backend)
-3. In **Authentication → Providers**, enable Email.
-4. Copy env files and fill in values:
+```env
+# backend/.env
+GOOGLE_CLIENT_ID=your-google-oauth-web-client-id.apps.googleusercontent.com
+APP_JWT_SECRET=change-me-to-a-long-random-secret
 
-```bash
-cp frontend/.env.example frontend/.env
-cp backend/.env.example backend/.env
+# frontend/.env
+VITE_GOOGLE_CLIENT_ID=your-google-oauth-web-client-id.apps.googleusercontent.com
 ```
 
-Установите `DEV_AUTH_ENABLED=false` и `VITE_DEV_AUTH_STUB=false` для prod-подобного режима.
+Фронт получает Google ID token, отправляет его в `POST /api/auth/google`, backend проверяет подпись через Google JWKS и выдаёт собственный app JWT для дальнейших `/api/*` запросов.
+
+## MySQL
+
+Backend включает MySQL store автоматически, если задан `MYSQL_DSN`.
+
+```env
+MYSQL_DSN=dnd-crime:password@tcp(rc1b-nivv22gmbg16e4hm.mdb.yandexcloud.net:3306)/dnd-crime?parseTime=true&charset=utf8mb4&collation=utf8mb4_unicode_ci&loc=UTC&tls=true
+MYSQL_CA_CERT=/path/to/yandex-ca.pem
+```
+
+При старте backend создаёт нужные таблицы через `CREATE TABLE IF NOT EXISTS`. Данные приложения больше не сбрасываются при рестарте, если используется MySQL.
+
+## S3 uploads
+
+Backend включает загрузку файлов, если заданы переменные S3-compatible storage:
+
+```env
+S3_ACCESS_KEY=...
+S3_SECRET_KEY=...
+S3_ENDPOINT=https://storage.yandexcloud.net
+S3_BUCKET=dnd-crime
+S3_PUBLIC_BASE_URL=https://storage.yandexcloud.net/dnd-crime
+```
+
+Фронт загружает аватары и вложения rich-text через `POST /api/uploads`. В ответ сохраняется публичный URL объекта; для отображения картинок bucket или нужный prefix должен быть доступен на чтение по этому URL.
 
 ## Local development
 
@@ -75,33 +103,65 @@ go mod tidy
 go run ./cmd/server
 ```
 
-API: http://localhost:8080/api/health
+API healthcheck: http://localhost:8080/api/health
 
-### Docker (full stack)
+### Docker demo stack
 
 ```bash
-# Ensure backend/.env and frontend/.env are configured
 docker compose up --build
 ```
 
 - Frontend: http://localhost:5173
 - Backend:  http://localhost:8080
 
+The checked-in Docker stack uses dev-auth and in-memory data. For production, pass real backend env and frontend build args.
+
+## Production checklist
+
+1. Set backend env:
+
+```env
+DEV_AUTH_ENABLED=false
+GOOGLE_CLIENT_ID=...
+APP_JWT_SECRET=...
+MYSQL_DSN=...
+MYSQL_CA_CERT=...
+S3_ACCESS_KEY=...
+S3_SECRET_KEY=...
+S3_ENDPOINT=https://storage.yandexcloud.net
+S3_BUCKET=dnd-crime
+S3_PUBLIC_BASE_URL=https://storage.yandexcloud.net/dnd-crime
+PORT=8080
+ALLOWED_ORIGINS=https://your-domain.com
+```
+
+2. Build frontend with:
+
+```env
+VITE_GOOGLE_CLIENT_ID=...
+VITE_DEV_AUTH_STUB=false
+VITE_DEV_AUTH_ALLOW_BUILD=false
+```
+
+3. Put TLS/reverse proxy in front of frontend nginx.
+4. Keep backend private inside the compose/network where possible; frontend nginx proxies `/api/` to backend.
+5. Configure MySQL backups.
+
 ## Routes
 
 | Path               | Page            | Access    |
 |--------------------|-----------------|-----------|
-| `/login`           | Sign in         | Public    |
-| `/register`        | Create account  | Public    |
-| `/forgot-password` | Reset password  | Public    |
+| `/login`           | Google sign in  | Public    |
+| `/register`        | Info redirect   | Public    |
+| `/forgot-password` | Info redirect   | Public    |
 | `/`                | Home            | Protected |
 
 ## Project structure
 
-```
+```text
 DndCrime/
 ├── frontend/          # React + Vite + Tailwind
-├── backend/           # Go API (JWT verification)
+├── backend/           # Go API, Google JWT verification, MySQL store
 ├── docker-compose.yml
 └── README.md
 ```

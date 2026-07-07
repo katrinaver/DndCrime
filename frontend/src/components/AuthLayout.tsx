@@ -16,7 +16,7 @@ export function AuthLayout({ title, subtitle, children }: AuthLayoutProps) {
               DndCrime
             </h1>
           </Link>
-          <p className="mt-1 text-sm text-dnd-muted">Portal for offline parties</p>
+          <p className="mt-1 text-sm text-dnd-muted">Портал для офлайн-партий</p>
         </div>
 
         <div className="rounded-xl border border-dnd-border bg-dnd-card p-8 shadow-2xl">

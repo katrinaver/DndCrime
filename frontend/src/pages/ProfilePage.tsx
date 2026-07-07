@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Button } from '../components/ui/Button'
 import { FormField } from '../components/ui/FormField'
 import { useAuth } from '../context/AuthContext'
+import { uploadFile } from '../api/uploads'
+import { isProbablyImageUrl } from '../lib/media'
 import { getProfileInitials } from '../modules/profile/utils'
 import { useProfileStore } from '../store/profileStore'
 
@@ -22,13 +24,10 @@ export function ProfilePage() {
   const fetchProfile = useProfileStore((s) => s.fetchProfile)
   const saveProfile = useProfileStore((s) => s.saveProfile)
 
-  const [currentPassword, setCurrentPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
   const [profileSaved, setProfileSaved] = useState(false)
-  const [passwordSaved, setPasswordSaved] = useState(false)
-  const [passwordError, setPasswordError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [avatarError, setAvatarError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -61,33 +60,25 @@ export function ProfilePage() {
     }
   }
 
-  function handlePasswordSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setPasswordError(null)
-    setPasswordSaved(false)
+  async function handleAvatarSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
 
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      setPasswordError('Заполните все поля пароля')
-      return
+    setAvatarError(null)
+    setUploadingAvatar(true)
+    try {
+      const { url } = await uploadFile(file, 'avatar')
+      updateProfile('avatarFileName', url)
+    } catch (err) {
+      setAvatarError(err instanceof Error ? err.message : 'Не удалось загрузить аватар')
+    } finally {
+      setUploadingAvatar(false)
     }
-
-    if (newPassword.length < 6) {
-      setPasswordError('Новый пароль — минимум 6 символов')
-      return
-    }
-
-    if (newPassword !== confirmPassword) {
-      setPasswordError('Пароли не совпадают')
-      return
-    }
-
-    setCurrentPassword('')
-    setNewPassword('')
-    setConfirmPassword('')
-    setPasswordSaved(true)
   }
 
   const initials = getProfileInitials(formProfile.name || user.email || '?')
+  const avatarIsImage = isProbablyImageUrl(formProfile.avatarFileName)
 
   return (
     <div>
@@ -118,7 +109,13 @@ export function ProfilePage() {
               <div className="mt-6 flex flex-col gap-6 sm:flex-row sm:items-start">
                 <div className="flex flex-col items-center gap-3">
                   <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-dnd-gold/40 bg-dnd-dark text-2xl font-bold text-dnd-gold">
-                    {formProfile.avatarFileName ? (
+                    {avatarIsImage ? (
+                      <img
+                        src={formProfile.avatarFileName}
+                        alt="Аватар профиля"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : formProfile.avatarFileName ? (
                       <span className="px-2 text-center text-xs font-normal text-dnd-muted">
                         {formProfile.avatarFileName}
                       </span>
@@ -127,14 +124,16 @@ export function ProfilePage() {
                     )}
                   </div>
                   <label className="cursor-pointer text-sm text-dnd-gold hover:underline">
-                    Загрузить аватар
+                    {uploadingAvatar ? 'Загрузка…' : 'Загрузить аватар'}
                     <input
                       type="file"
                       accept="image/*"
                       className="sr-only"
-                      onChange={(e) => updateProfile('avatarFileName', e.target.files?.[0]?.name ?? '')}
+                      disabled={uploadingAvatar}
+                      onChange={(e) => void handleAvatarSelect(e)}
                     />
                   </label>
+                  {avatarError && <p className="text-center text-xs text-red-400">{avatarError}</p>}
                   {formProfile.avatarFileName && (
                     <button
                       type="button"
@@ -149,7 +148,7 @@ export function ProfilePage() {
                 <div className="min-w-0 flex-1 space-y-4">
                   <FormField
                     id="email"
-                    label="Email"
+                    label="Эл. почта"
                     type="email"
                     value={formProfile.email}
                     onChange={(v) => updateProfile('email', v)}
@@ -192,60 +191,16 @@ export function ProfilePage() {
           )}
         </form>
 
-        <form
-          onSubmit={handlePasswordSubmit}
-          className="rounded-xl border border-dnd-border bg-dnd-card p-6"
-        >
+        <section className="rounded-xl border border-dnd-border bg-dnd-card p-6">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-dnd-muted">
-            Смена пароля
+            Авторизация
           </h3>
           <p className="mt-1 text-xs text-dnd-muted">
             {isDevAuth
-              ? 'В режиме разработки смена пароля — заглушка'
-              : 'Новый пароль будет применён к аккаунту Supabase'}
+              ? 'Сейчас включена локальная заглушка авторизации'
+              : 'Вход выполняется через Google. Пароль DndCrime не хранит.'}
           </p>
-
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <FormField
-              id="currentPassword"
-              label="Текущий пароль"
-              type="password"
-              value={currentPassword}
-              onChange={setCurrentPassword}
-              autoComplete="current-password"
-            />
-            <div className="hidden sm:block" />
-            <FormField
-              id="newPassword"
-              label="Новый пароль"
-              type="password"
-              value={newPassword}
-              onChange={setNewPassword}
-              autoComplete="new-password"
-            />
-            <FormField
-              id="confirmPassword"
-              label="Подтверждение пароля"
-              type="password"
-              value={confirmPassword}
-              onChange={setConfirmPassword}
-              autoComplete="new-password"
-            />
-          </div>
-
-          {passwordError && (
-            <p className="mt-4 text-sm text-red-400">{passwordError}</p>
-          )}
-
-          <div className="mt-6 flex items-center justify-end gap-3">
-            {passwordSaved && (
-              <span className="text-sm text-emerald-400">Пароль обновлён</span>
-            )}
-            <Button type="submit" variant="secondary" className="!w-auto px-6">
-              Сменить пароль
-            </Button>
-          </div>
-        </form>
+        </section>
       </div>
     </div>
   )

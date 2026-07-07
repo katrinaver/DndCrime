@@ -23,12 +23,12 @@ export function DevAuthBanner() {
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="rounded bg-amber-500/30 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-amber-200">
-            Dev
+            Разработка
           </span>
           <span>
             {isDevAuth
               ? `Заглушка: вы вошли как ${user?.email}`
-              : 'Заглушка авторизации — Supabase не нужен'}
+              : 'Заглушка авторизации — вход через Google не нужен'}
           </span>
         </div>
 

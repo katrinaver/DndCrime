@@ -1,16 +1,26 @@
 package main
 
 import (
+	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"database/sql"
+	"fmt"
 	"log"
+	"net"
 	"net/http"
+	"os"
+	"time"
 
-	"github.com/joho/godotenv"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/go-sql-driver/mysql"
+	"github.com/joho/godotenv"
 	"github.com/kate/dndcrime/internal/auth"
 	"github.com/kate/dndcrime/internal/config"
 	"github.com/kate/dndcrime/internal/handlers"
+	"github.com/kate/dndcrime/internal/storage"
 	"github.com/kate/dndcrime/internal/store"
 )
 
@@ -21,12 +31,28 @@ func main() {
 
 	if cfg.DevAuthEnabled {
 		log.Println("INFO: DEV_AUTH_ENABLED=true — accepting dev-stub-token as user-demo")
-	} else if cfg.SupabaseJWTSecret == "" {
-		log.Println("WARNING: SUPABASE_JWT_SECRET is not set — protected routes will reject all tokens")
+	} else if cfg.AppJWTSecret == "" {
+		log.Println("WARNING: APP_JWT_SECRET is not set — protected routes will reject all tokens")
 	}
 
-	st := store.NewMemory()
-	h := handlers.New(st)
+	st, cleanup := initStore(cfg)
+	defer cleanup()
+
+	authService := auth.NewService(cfg.GoogleClientID, cfg.AppJWTSecret)
+	uploader := storage.NewS3Client(storage.S3Config{
+		AccessKey:  cfg.S3AccessKey,
+		SecretKey:  cfg.S3SecretKey,
+		Endpoint:   cfg.S3Endpoint,
+		Bucket:     cfg.S3Bucket,
+		PublicBase: cfg.S3PublicBase,
+	})
+	if uploader.Configured() {
+		log.Println("INFO: S3 uploads enabled")
+	} else {
+		log.Println("INFO: S3 uploads disabled")
+	}
+
+	h := handlers.New(st, authService, uploader)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -41,14 +67,16 @@ func main() {
 	}))
 
 	r.Get("/api/health", h.Health)
+	r.Post("/api/auth/google", h.GoogleLogin)
 
 	r.Route("/api", func(r chi.Router) {
 		r.Use(auth.Middleware(auth.MiddlewareOptions{
-			JWTSecret:      cfg.SupabaseJWTSecret,
+			JWTSecret:      cfg.AppJWTSecret,
 			DevAuthEnabled: cfg.DevAuthEnabled,
 		}))
 
 		r.Get("/me", h.Me)
+		r.Post("/uploads", h.UploadFile)
 
 		r.Route("/profile", func(r chi.Router) {
 			r.Get("/", h.GetProfile)
@@ -116,4 +144,76 @@ func main() {
 	if err := http.ListenAndServe(addr, r); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func initStore(cfg config.Config) (store.Store, func()) {
+	if cfg.MySQLDSN == "" {
+		log.Println("INFO: MYSQL_DSN is not set — using in-memory store")
+		return store.NewMemory(), func() {}
+	}
+
+	dsn, err := prepareMySQLDSN(cfg)
+	if err != nil {
+		log.Fatalf("prepare mysql dsn: %v", err)
+	}
+
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		log.Fatalf("open mysql: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := db.PingContext(ctx); err != nil {
+		_ = db.Close()
+		log.Fatalf("ping mysql: %v", err)
+	}
+	if err := store.EnsureMySQLSchema(ctx, db); err != nil {
+		_ = db.Close()
+		log.Fatalf("ensure mysql schema: %v", err)
+	}
+
+	log.Println("INFO: using MySQL store")
+	return store.NewMySQL(db), func() {
+		_ = db.Close()
+	}
+}
+
+func prepareMySQLDSN(cfg config.Config) (string, error) {
+	if cfg.MySQLCACert == "" {
+		return cfg.MySQLDSN, nil
+	}
+
+	dsnCfg, err := mysql.ParseDSN(cfg.MySQLDSN)
+	if err != nil {
+		return "", err
+	}
+
+	cert, err := os.ReadFile(cfg.MySQLCACert)
+	if err != nil {
+		return "", err
+	}
+
+	roots := x509.NewCertPool()
+	if !roots.AppendCertsFromPEM(cert) {
+		return "", fmt.Errorf("mysql ca cert does not contain PEM certificates")
+	}
+
+	host, _, err := net.SplitHostPort(dsnCfg.Addr)
+	if err != nil {
+		host = dsnCfg.Addr
+	}
+
+	tlsName := "dndcrime-mysql"
+	if err := mysql.RegisterTLSConfig(tlsName, &tls.Config{
+		RootCAs:    roots,
+		MinVersion: tls.VersionTLS12,
+		ServerName: host,
+	}); err != nil {
+		return "", err
+	}
+
+	dsnCfg.TLSConfig = tlsName
+	return dsnCfg.FormatDSN(), nil
 }

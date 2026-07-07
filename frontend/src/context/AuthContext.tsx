@@ -7,7 +7,12 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import type { Session, User } from '@supabase/supabase-js'
+import {
+  clearStoredAuth,
+  getStoredAccessToken,
+  storeAuth,
+} from '../lib/authStorage'
+import type { AuthSession, AuthUser } from '../lib/authTypes'
 import {
   createDevSession,
   createDevUser,
@@ -15,26 +20,54 @@ import {
   isDevAuthStubEnabled,
   setDevAuthActive,
 } from '../lib/devAuth'
-import { supabase } from '../lib/supabase'
+
+interface ProfileResponse {
+  id: string
+  email: string
+  profile?: {
+    name?: string
+    avatarUrl?: string
+  }
+}
+
+interface GoogleAuthResponse {
+  accessToken: string
+  user: AuthUser
+}
 
 interface AuthContextValue {
-  user: User | null
-  session: Session | null
+  user: AuthUser | null
+  session: AuthSession | null
   loading: boolean
   isDevAuth: boolean
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>
-  signUp: (email: string, password: string) => Promise<{ error: string | null }>
+  signInWithGoogleCredential: (credential: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
-  resetPassword: (email: string) => Promise<{ error: string | null }>
   enableDevAuth: () => void
   disableDevAuth: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+function createSession(token: string, user: AuthUser): AuthSession {
+  return {
+    access_token: token,
+    token_type: 'bearer',
+    user,
+  }
+}
+
+function userFromMeResponse(data: ProfileResponse): AuthUser {
+  return {
+    id: data.id,
+    email: data.email,
+    name: data.profile?.name,
+    avatarUrl: data.profile?.avatarUrl,
+  }
+}
+
 function applyDevAuth(
-  setUser: (user: User | null) => void,
-  setSession: (session: Session | null) => void,
+  setUser: (user: AuthUser | null) => void,
+  setSession: (session: AuthSession | null) => void,
   setIsDevAuth: (value: boolean) => void,
 ) {
   const devUser = createDevUser()
@@ -44,13 +77,14 @@ function applyDevAuth(
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [session, setSession] = useState<Session | null>(null)
+  const [user, setUser] = useState<AuthUser | null>(null)
+  const [session, setSession] = useState<AuthSession | null>(null)
   const [loading, setLoading] = useState(true)
   const [isDevAuth, setIsDevAuth] = useState(false)
 
   const enableDevAuth = useCallback(() => {
     if (!isDevAuthStubEnabled()) return
+    clearStoredAuth()
     setDevAuthActive(true)
     applyDevAuth(setUser, setSession, setIsDevAuth)
     setLoading(false)
@@ -61,61 +95,98 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsDevAuth(false)
     setUser(null)
     setSession(null)
-
-    const { data: { session } } = await supabase.auth.getSession()
-    setSession(session)
-    setUser(session?.user ?? null)
   }, [])
 
   useEffect(() => {
-    if (isDevAuthStubEnabled() && isDevAuthActive()) {
-      applyDevAuth(setUser, setSession, setIsDevAuth)
-      setLoading(false)
-      return
+    let cancelled = false
+
+    async function bootstrap() {
+      if (isDevAuthStubEnabled() && isDevAuthActive()) {
+        applyDevAuth(setUser, setSession, setIsDevAuth)
+        setLoading(false)
+        return
+      }
+
+      const token = getStoredAccessToken()
+      if (!token) {
+        setLoading(false)
+        return
+      }
+
+      try {
+        const res = await fetch('/api/me', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!res.ok) {
+          clearStoredAuth()
+          if (!cancelled) {
+            setUser(null)
+            setSession(null)
+          }
+          return
+        }
+
+        const data = (await res.json()) as ProfileResponse
+        const authUser = userFromMeResponse(data)
+        storeAuth(token, authUser)
+        if (!cancelled) {
+          setUser(authUser)
+          setSession(createSession(token, authUser))
+          setIsDevAuth(false)
+        }
+      } catch {
+        clearStoredAuth()
+        if (!cancelled) {
+          setUser(null)
+          setSession(null)
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
+    void bootstrap()
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (isDevAuthActive()) return
-      setSession(session)
-      setUser(session?.user ?? null)
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const signInWithGoogleCredential = useCallback(async (credential: string) => {
+    try {
+      const res = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential }),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        return { error: text || 'Не удалось войти через Google' }
+      }
+
+      const data = (await res.json()) as GoogleAuthResponse
+      const authUser = data.user
+      clearStoredAuth()
+      setDevAuthActive(false)
+      storeAuth(data.accessToken, authUser)
+      setUser(authUser)
+      setSession(createSession(data.accessToken, authUser))
       setIsDevAuth(false)
-      setLoading(false)
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
-
-  const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    return { error: error?.message ?? null }
-  }, [])
-
-  const signUp = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password })
-    return { error: error?.message ?? null }
+      return { error: null }
+    } catch {
+      return { error: 'Не удалось войти через Google' }
+    }
   }, [])
 
   const signOut = useCallback(async () => {
-    if (isDevAuthActive()) {
-      await disableDevAuth()
-      return
-    }
-    await supabase.auth.signOut()
-  }, [disableDevAuth])
-
-  const resetPassword = useCallback(async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/login`,
-    })
-    return { error: error?.message ?? null }
+    setDevAuthActive(false)
+    clearStoredAuth()
+    setIsDevAuth(false)
+    setUser(null)
+    setSession(null)
+    window.google?.accounts.id.disableAutoSelect()
   }, [])
 
   const value = useMemo(
@@ -124,14 +195,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       loading,
       isDevAuth,
-      signIn,
-      signUp,
+      signInWithGoogleCredential,
       signOut,
-      resetPassword,
       enableDevAuth,
       disableDevAuth,
     }),
-    [user, session, loading, isDevAuth, signIn, signUp, signOut, resetPassword, enableDevAuth, disableDevAuth],
+    [user, session, loading, isDevAuth, signInWithGoogleCredential, signOut, enableDevAuth, disableDevAuth],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

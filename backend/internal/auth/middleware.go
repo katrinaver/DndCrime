@@ -14,14 +14,19 @@ type contextKey string
 const UserContextKey contextKey = "user"
 
 type Claims struct {
-	Email string `json:"email"`
-	Sub   string `json:"sub"`
+	Email     string `json:"email"`
+	Name      string `json:"name,omitempty"`
+	AvatarURL string `json:"avatarUrl,omitempty"`
+	Provider  string `json:"provider,omitempty"`
+	Sub       string `json:"sub"`
 	jwt.RegisteredClaims
 }
 
 type User struct {
-	ID    string
-	Email string
+	ID        string
+	Email     string
+	Name      string
+	AvatarURL string
 }
 
 type MiddlewareOptions struct {
@@ -91,5 +96,10 @@ func UserFromContext(ctx context.Context) (User, bool) {
 	if userID == "" {
 		userID = claims.Email
 	}
-	return User{ID: userID, Email: claims.Email}, true
+	return User{
+		ID:        userID,
+		Email:     claims.Email,
+		Name:      claims.Name,
+		AvatarURL: claims.AvatarURL,
+	}, true
 }

@@ -1,5 +1,5 @@
 import { isDevAuthActive } from './devAuth'
-import { supabase } from './supabase'
+import { getStoredAccessToken } from './authStorage'
 
 export class ApiError extends Error {
   constructor(
@@ -15,15 +15,15 @@ async function getAccessToken(): Promise<string | null> {
   if (isDevAuthActive()) {
     return 'dev-stub-token'
   }
-  const { data } = await supabase.auth.getSession()
-  return data.session?.access_token ?? null
+  return getStoredAccessToken()
 }
 
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = await getAccessToken()
   const headers = new Headers(init.headers)
+  const isFormData = typeof FormData !== 'undefined' && init.body instanceof FormData
 
-  if (!headers.has('Content-Type') && init.body) {
+  if (!headers.has('Content-Type') && init.body && !isFormData) {
     headers.set('Content-Type', 'application/json')
   }
   if (token) {

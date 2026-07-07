@@ -6,7 +6,8 @@ import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
 import Underline from '@tiptap/extension-underline'
 import EmojiPicker, { type EmojiClickData, Theme } from 'emoji-picker-react'
-import { escapeHtml, isRichTextEmpty, readFileAsDataUrl } from './utils'
+import { uploadFile } from '../../api/uploads'
+import { escapeHtml, isRichTextEmpty } from './utils'
 
 interface RichTextEditorProps {
   placeholder?: string
@@ -22,11 +23,13 @@ function ToolbarButton({
   active,
   title,
   onClick,
+  disabled = false,
   children,
 }: {
   active?: boolean
   title: string
   onClick: () => void
+  disabled?: boolean
   children: ReactNode
 }) {
   return (
@@ -34,8 +37,10 @@ function ToolbarButton({
       type="button"
       title={title}
       onClick={onClick}
+      disabled={disabled}
       className={[
         'rounded-md px-2 py-1 text-xs font-medium transition',
+        disabled ? 'cursor-not-allowed opacity-50' : '',
         active
           ? 'bg-dnd-purple/30 text-dnd-purple-hover'
           : 'text-dnd-muted hover:bg-dnd-border/60 hover:text-white',
@@ -57,6 +62,7 @@ export function RichTextEditor({
 }: RichTextEditorProps) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [attachmentError, setAttachmentError] = useState<string | null>(null)
+  const [uploadingAttachment, setUploadingAttachment] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const emojiRef = useRef<HTMLDivElement>(null)
   const onSubmitRef = useRef(onSubmit)
@@ -148,10 +154,11 @@ export function RichTextEditor({
     if (!file || !editor) return
 
     setAttachmentError(null)
+    setUploadingAttachment(true)
     try {
-      const dataUrl = await readFileAsDataUrl(file)
+      const { url } = await uploadFile(file, 'attachment')
       if (file.type.startsWith('image/')) {
-        editor.chain().focus().setImage({ src: dataUrl, alt: file.name }).run()
+        editor.chain().focus().setImage({ src: url, alt: file.name }).run()
         return
       }
 
@@ -159,11 +166,13 @@ export function RichTextEditor({
         .chain()
         .focus()
         .insertContent(
-          `<p><a href="${dataUrl}" download="${escapeHtml(file.name)}">📎 ${escapeHtml(file.name)}</a></p>`,
+          `<p><a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">📎 ${escapeHtml(file.name)}</a></p>`,
         )
         .run()
     } catch (err) {
       setAttachmentError(err instanceof Error ? err.message : 'Не удалось прикрепить файл')
+    } finally {
+      setUploadingAttachment(false)
     }
   }
 
@@ -179,7 +188,7 @@ export function RichTextEditor({
               active={editor.isActive('heading', { level: 2 })}
               onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
             >
-              H
+              Заг
             </ToolbarButton>
             <ToolbarButton
               title="Маркированный список"
@@ -196,21 +205,21 @@ export function RichTextEditor({
           active={editor.isActive('bold')}
           onClick={() => editor.chain().focus().toggleBold().run()}
         >
-          B
+          Ж
         </ToolbarButton>
         <ToolbarButton
           title="Курсив"
           active={editor.isActive('italic')}
           onClick={() => editor.chain().focus().toggleItalic().run()}
         >
-          I
+          К
         </ToolbarButton>
         <ToolbarButton
           title="Подчёркнутый"
           active={editor.isActive('underline')}
           onClick={() => editor.chain().focus().toggleUnderline().run()}
         >
-          U
+          Ч
         </ToolbarButton>
         <ToolbarButton
           title="Ссылка"
@@ -238,8 +247,12 @@ export function RichTextEditor({
           )}
         </div>
 
-        <ToolbarButton title="Прикрепить файл" onClick={() => fileInputRef.current?.click()}>
-          📎
+        <ToolbarButton
+          title="Прикрепить файл"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploadingAttachment || disabled}
+        >
+          {uploadingAttachment ? '…' : '📎'}
         </ToolbarButton>
 
         <input
@@ -247,6 +260,7 @@ export function RichTextEditor({
           type="file"
           className="hidden"
           accept="image/*,.pdf,.txt,.md,.doc,.docx,.zip"
+          disabled={uploadingAttachment || disabled}
           onChange={(e) => void handleFileSelect(e)}
         />
       </div>
@@ -261,7 +275,7 @@ export function RichTextEditor({
 
       {submitOnEnter && (
         <p className="border-t border-dnd-border/70 px-3 py-1.5 text-xs text-dnd-muted">
-          Enter — отправить, Shift+Enter — новая строка
+          Ввод — отправить, Shift+Ввод — новая строка
         </p>
       )}
     </div>
