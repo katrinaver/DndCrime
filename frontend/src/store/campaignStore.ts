@@ -1,11 +1,21 @@
 import { create } from 'zustand'
 import * as campaignsApi from '../api/campaigns'
-import type { Campaign, CampaignCreateInput, QuestionnaireFieldSetting } from '../modules/campaigns/types'
+import type {
+  Campaign,
+  CampaignAsset,
+  CampaignCreateInput,
+  CampaignProgress,
+  CampaignUpdateInput,
+  QuestionnaireFieldSetting,
+} from '../modules/campaigns/types'
 import type { CampaignFormConfig } from '../modules/characters/types'
+import type { NewsPost } from '../modules/news/types'
 
 interface CampaignState {
   campaigns: Campaign[]
   questionnaires: Record<string, CampaignFormConfig>
+  assetsByCampaign: Record<string, CampaignAsset[]>
+  progressByCampaign: Record<string, CampaignProgress>
   loading: boolean
   error: string | null
   fetchCampaigns: () => Promise<void>
@@ -15,14 +25,39 @@ interface CampaignState {
     questionnaireSettings: QuestionnaireFieldSetting[],
     antiAchievementPool: string[],
   ) => Promise<Campaign>
+  updateCampaign: (campaignId: string, input: CampaignUpdateInput) => Promise<Campaign>
+  publishCampaignInvitation: (campaignId: string) => Promise<{ post: NewsPost; campaign: Campaign }>
+  joinCampaign: (campaignId: string) => Promise<Campaign>
+  leaveCampaign: (campaignId: string) => Promise<void>
+  deleteCampaign: (campaignId: string) => Promise<void>
+  fetchCampaignAssets: (campaignId: string) => Promise<CampaignAsset[]>
+  createCampaignAsset: (
+    campaignId: string,
+    asset: Pick<CampaignAsset, 'title' | 'type' | 'description' | 'url'>,
+  ) => Promise<CampaignAsset>
+  updateCampaignAsset: (
+    campaignId: string,
+    assetId: string,
+    asset: Pick<CampaignAsset, 'title' | 'type' | 'description' | 'url'>,
+  ) => Promise<CampaignAsset>
+  deleteCampaignAsset: (campaignId: string, assetId: string) => Promise<void>
+  fetchCampaignProgress: (campaignId: string) => Promise<CampaignProgress>
+  saveCampaignProgress: (
+    campaignId: string,
+    progress: Omit<CampaignProgress, 'campaignId' | 'updatedAt'>,
+  ) => Promise<CampaignProgress>
   getCampaignById: (id: string) => Campaign | undefined
   getQuestionnaireConfig: (campaignId: string) => CampaignFormConfig | undefined
+  getCampaignAssets: (campaignId: string) => CampaignAsset[]
+  getCampaignProgress: (campaignId: string) => CampaignProgress | undefined
   reset: () => void
 }
 
 export const useCampaignStore = create<CampaignState>((set, get) => ({
   campaigns: [],
   questionnaires: {},
+  assetsByCampaign: {},
+  progressByCampaign: {},
   loading: false,
   error: null,
 
@@ -65,9 +100,129 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
     return campaign
   },
 
+  updateCampaign: async (campaignId, input) => {
+    const updated = await campaignsApi.updateCampaign(campaignId, input)
+    set((state) => ({
+      campaigns: state.campaigns.map((c) => (c.id === campaignId ? updated : c)),
+    }))
+    return updated
+  },
+
+  publishCampaignInvitation: async (campaignId) => {
+    const result = await campaignsApi.publishCampaignInvitation(campaignId)
+    set((state) => ({
+      campaigns: state.campaigns.map((c) => (c.id === campaignId ? result.campaign : c)),
+    }))
+    return result
+  },
+
+  joinCampaign: async (campaignId) => {
+    const campaign = await campaignsApi.joinCampaign(campaignId)
+    set((state) => {
+      const exists = state.campaigns.some((c) => c.id === campaignId)
+      return {
+        campaigns: exists
+          ? state.campaigns.map((c) => (c.id === campaignId ? campaign : c))
+          : [...state.campaigns, campaign],
+      }
+    })
+    return campaign
+  },
+
+  leaveCampaign: async (campaignId) => {
+    await campaignsApi.leaveCampaign(campaignId)
+    set((state) => ({
+      campaigns: state.campaigns.filter((c) => c.id !== campaignId),
+    }))
+  },
+
+  deleteCampaign: async (campaignId) => {
+    await campaignsApi.deleteCampaign(campaignId)
+    set((state) => ({
+      campaigns: state.campaigns.filter((c) => c.id !== campaignId),
+      assetsByCampaign: Object.fromEntries(
+        Object.entries(state.assetsByCampaign).filter(([id]) => id !== campaignId),
+      ),
+      progressByCampaign: Object.fromEntries(
+        Object.entries(state.progressByCampaign).filter(([id]) => id !== campaignId),
+      ),
+    }))
+  },
+
+  fetchCampaignAssets: async (campaignId) => {
+    const assets = await campaignsApi.fetchCampaignAssets(campaignId)
+    const list = Array.isArray(assets) ? assets : []
+    set((state) => ({
+      assetsByCampaign: { ...state.assetsByCampaign, [campaignId]: list },
+    }))
+    return list
+  },
+
+  createCampaignAsset: async (campaignId, asset) => {
+    const created = await campaignsApi.createCampaignAsset(campaignId, asset)
+    set((state) => ({
+      assetsByCampaign: {
+        ...state.assetsByCampaign,
+        [campaignId]: [...(state.assetsByCampaign[campaignId] ?? []), created],
+      },
+    }))
+    return created
+  },
+
+  updateCampaignAsset: async (campaignId, assetId, asset) => {
+    const updated = await campaignsApi.updateCampaignAsset(campaignId, assetId, asset)
+    set((state) => ({
+      assetsByCampaign: {
+        ...state.assetsByCampaign,
+        [campaignId]: (state.assetsByCampaign[campaignId] ?? []).map((a) =>
+          a.id === assetId ? updated : a,
+        ),
+      },
+    }))
+    return updated
+  },
+
+  deleteCampaignAsset: async (campaignId, assetId) => {
+    await campaignsApi.deleteCampaignAsset(campaignId, assetId)
+    set((state) => ({
+      assetsByCampaign: {
+        ...state.assetsByCampaign,
+        [campaignId]: (state.assetsByCampaign[campaignId] ?? []).filter((a) => a.id !== assetId),
+      },
+    }))
+  },
+
+  fetchCampaignProgress: async (campaignId) => {
+    const progress = await campaignsApi.fetchCampaignProgress(campaignId)
+    set((state) => ({
+      progressByCampaign: { ...state.progressByCampaign, [campaignId]: progress },
+    }))
+    return progress
+  },
+
+  saveCampaignProgress: async (campaignId, progress) => {
+    const saved = await campaignsApi.saveCampaignProgress(campaignId, progress)
+    set((state) => ({
+      progressByCampaign: { ...state.progressByCampaign, [campaignId]: saved },
+    }))
+    return saved
+  },
+
   getCampaignById: (id) => get().campaigns.find((c) => c.id === id),
 
   getQuestionnaireConfig: (campaignId) => get().questionnaires[campaignId],
 
-  reset: () => set({ campaigns: [], questionnaires: {}, loading: false, error: null }),
+  getCampaignAssets: (campaignId) => get().assetsByCampaign[campaignId] ?? [],
+
+  getCampaignProgress: (campaignId) => get().progressByCampaign[campaignId],
+
+  reset: () =>
+    set({
+      campaigns: [],
+      questionnaires: {},
+      assetsByCampaign: {},
+      progressByCampaign: {},
+      loading: false,
+      error: null,
+    }),
 }))

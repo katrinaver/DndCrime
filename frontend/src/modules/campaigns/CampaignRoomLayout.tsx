@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { NavLink, Outlet, Navigate, useParams } from 'react-router-dom'
 import { BackLink } from '../../components/BackLink'
+import { useAuth } from '../../context/AuthContext'
 import { useCharacterStore } from '../../store/characterStore'
 import { useCampaigns } from './CampaignContext'
 import type { CampaignStatus } from './types'
@@ -28,6 +29,7 @@ const roomNavItems = [
   { to: 'menu', label: 'Меню' },
   { to: 'chat', label: 'Чат' },
   { to: 'assets', label: 'Ассеты' },
+  { to: 'progress', label: 'Прогресс' },
   { to: 'achievements', label: 'Ачивки' },
 ]
 
@@ -42,12 +44,14 @@ function roomNavClass({ isActive }: { isActive: boolean }) {
 
 export function CampaignRoomLayout() {
   const { campaignId } = useParams<{ campaignId: string }>()
+  const { user } = useAuth()
   const { campaigns, userCampaignIds } = useCampaigns()
   const getCharacterByCampaignId = useCharacterStore((s) => s.getCharacterByCampaignId)
   const fetchCharacters = useCharacterStore((s) => s.fetchCharacters)
 
   const campaign = campaigns.find((c) => c.id === campaignId)
   const character = campaignId ? getCharacterByCampaignId(campaignId) : undefined
+  const isMaster = campaign && user?.id === campaign.masterId
 
   useEffect(() => {
     void fetchCharacters()
@@ -76,6 +80,15 @@ export function CampaignRoomLayout() {
             {statusLabels[campaign.status]}
           </span>
         </div>
+
+        {isMaster && (
+          <NavLink
+            to={`/campaigns/${campaignId}/master`}
+            className="mt-3 inline-block text-sm text-dnd-gold hover:underline"
+          >
+            Открыть панель мастера →
+          </NavLink>
+        )}
 
         {character ? (
           <div className="mt-4 rounded-xl border border-dnd-gold/30 bg-dnd-gold/5 p-4">

@@ -9,31 +9,35 @@ import (
 )
 
 type MemoryStore struct {
-	mu            sync.RWMutex
-	profiles      map[string]models.UserProfile
-	notes         map[string]models.Note
-	campaigns     map[string]models.Campaign
-	questionnaires map[string]models.CharacterQuestionnaire
-	characters    map[string]models.Character
-	chats         map[string]models.Chat
-	messages      map[string][]models.ChatMessage
-	newsPosts     map[string]models.NewsPost
-	calendar      map[string]models.CalendarEvent
-	notifications map[string]models.Notification
+	mu              sync.RWMutex
+	profiles        map[string]models.UserProfile
+	notes           map[string]models.Note
+	campaigns       map[string]models.Campaign
+	questionnaires  map[string]models.CharacterQuestionnaire
+	campaignAssets  map[string]models.CampaignAsset
+	campaignProgress map[string]models.CampaignProgress
+	characters      map[string]models.Character
+	chats           map[string]models.Chat
+	messages        map[string][]models.ChatMessage
+	newsPosts       map[string]models.NewsPost
+	calendar        map[string]models.CalendarEvent
+	notifications   map[string]models.Notification
 }
 
 func NewMemory() *MemoryStore {
 	s := &MemoryStore{
-		profiles:       make(map[string]models.UserProfile),
-		notes:          make(map[string]models.Note),
-		campaigns:      make(map[string]models.Campaign),
-		questionnaires: make(map[string]models.CharacterQuestionnaire),
-		characters:     make(map[string]models.Character),
-		chats:          make(map[string]models.Chat),
-		messages:       make(map[string][]models.ChatMessage),
-		newsPosts:      make(map[string]models.NewsPost),
-		calendar:       make(map[string]models.CalendarEvent),
-		notifications:  make(map[string]models.Notification),
+		profiles:         make(map[string]models.UserProfile),
+		notes:            make(map[string]models.Note),
+		campaigns:        make(map[string]models.Campaign),
+		questionnaires:   make(map[string]models.CharacterQuestionnaire),
+		campaignAssets:   make(map[string]models.CampaignAsset),
+		campaignProgress: make(map[string]models.CampaignProgress),
+		characters:       make(map[string]models.Character),
+		chats:            make(map[string]models.Chat),
+		messages:         make(map[string][]models.ChatMessage),
+		newsPosts:        make(map[string]models.NewsPost),
+		calendar:         make(map[string]models.CalendarEvent),
+		notifications:    make(map[string]models.Notification),
 	}
 	s.seed()
 	return s
@@ -65,6 +69,22 @@ func (s *MemoryStore) seed() {
 
 	s.campaigns["1"] = campaign1
 	s.campaigns["2"] = campaign2
+
+	s.campaignAssets["asset-1"] = models.CampaignAsset{
+		ID: "asset-1", CampaignID: "1", Title: "Карта Баровии",
+		Type: models.AssetTypeMap, Description: "Обзорная карта региона",
+		CreatedAt: now, UpdatedAt: now,
+	}
+
+	s.campaignProgress["1"] = models.CampaignProgress{
+		CampaignID: "1", Summary: "Группа прибыла в деревню Баровия и встретила Страда.",
+		CurrentChapter: "Глава 1: Прибытие",
+		Milestones: []models.CampaignMilestone{
+			{ID: "ms-1", Title: "Прибытие в Баровию", Description: "Добраться до деревни", Completed: true, CompletedAt: &now, Order: 1},
+			{ID: "ms-2", Title: "Встреча со Страдом", Description: "Первая аудиенция у властителя", Completed: false, Order: 2},
+		},
+		UpdatedAt: now,
+	}
 
 	s.questionnaires["1"] = models.CharacterQuestionnaire{
 		CampaignID: "1", Title: "Анкета: Проклятие Страда",
@@ -193,6 +213,132 @@ func (s *MemoryStore) CreateCampaign(campaign models.Campaign, questionnaire mod
 	s.messages[chat.ID] = []models.ChatMessage{}
 
 	return campaign
+}
+
+func (s *MemoryStore) UpdateCampaign(campaignID string, update models.UpdateCampaignRequest) (models.Campaign, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	campaign, ok := s.campaigns[campaignID]
+	if !ok {
+		return models.Campaign{}, false
+	}
+
+	if update.Name != "" {
+		campaign.Name = update.Name
+	}
+	campaign.Place = update.Place
+	campaign.Setting = update.Setting
+	if update.MaxPlayers > 0 {
+		campaign.MaxPlayers = update.MaxPlayers
+	}
+	if update.Level != "" {
+		campaign.Level = update.Level
+	}
+	campaign.ExtraParams = update.ExtraParams
+	if update.AntiAchievementPool != nil {
+		campaign.AntiAchievementPool = update.AntiAchievementPool
+	}
+	campaign.SessionDate = update.SessionDate
+	campaign.SessionTime = update.SessionTime
+	campaign.LastSession = update.LastSession
+	if update.Status != "" {
+		campaign.Status = update.Status
+	}
+	campaign.UpdatedAt = Now()
+	s.campaigns[campaignID] = campaign
+	return campaign, true
+}
+
+func (s *MemoryStore) IsCampaignMaster(campaignID, userID string) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	c, ok := s.campaigns[campaignID]
+	if !ok {
+		return false
+	}
+	return c.MasterID == userID
+}
+
+func (s *MemoryStore) ListCampaignAssets(campaignID string) []models.CampaignAsset {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]models.CampaignAsset, 0)
+	for _, asset := range s.campaignAssets {
+		if asset.CampaignID == campaignID {
+			out = append(out, asset)
+		}
+	}
+	return out
+}
+
+func (s *MemoryStore) CreateCampaignAsset(campaignID string, asset models.CampaignAsset) models.CampaignAsset {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := Now()
+	asset.ID = id.New()
+	asset.CampaignID = campaignID
+	asset.CreatedAt = now
+	asset.UpdatedAt = now
+	if asset.Type == "" {
+		asset.Type = models.AssetTypeNote
+	}
+	s.campaignAssets[asset.ID] = asset
+	return asset
+}
+
+func (s *MemoryStore) UpdateCampaignAsset(campaignID, assetID string, asset models.CampaignAsset) (models.CampaignAsset, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	existing, ok := s.campaignAssets[assetID]
+	if !ok || existing.CampaignID != campaignID {
+		return models.CampaignAsset{}, false
+	}
+	existing.Title = asset.Title
+	if asset.Type != "" {
+		existing.Type = asset.Type
+	}
+	existing.Description = asset.Description
+	existing.URL = asset.URL
+	existing.UpdatedAt = Now()
+	s.campaignAssets[assetID] = existing
+	return existing, true
+}
+
+func (s *MemoryStore) DeleteCampaignAsset(campaignID, assetID string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	existing, ok := s.campaignAssets[assetID]
+	if !ok || existing.CampaignID != campaignID {
+		return false
+	}
+	delete(s.campaignAssets, assetID)
+	return true
+}
+
+func (s *MemoryStore) GetCampaignProgress(campaignID string) (models.CampaignProgress, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	progress, ok := s.campaignProgress[campaignID]
+	if !ok {
+		return models.CampaignProgress{
+			CampaignID: campaignID,
+			Milestones: []models.CampaignMilestone{},
+			UpdatedAt:  Now(),
+		}, false
+	}
+	return progress, true
+}
+
+func (s *MemoryStore) SaveCampaignProgress(progress models.CampaignProgress) models.CampaignProgress {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	progress.UpdatedAt = Now()
+	if progress.Milestones == nil {
+		progress.Milestones = []models.CampaignMilestone{}
+	}
+	s.campaignProgress[progress.CampaignID] = progress
+	return progress
 }
 
 func (s *MemoryStore) IsCampaignMember(campaignID, userID string) bool {

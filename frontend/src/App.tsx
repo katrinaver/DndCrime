@@ -8,9 +8,16 @@ import { CampaignAchievementsPage } from './pages/CampaignAchievementsPage'
 import { CampaignAssetsPage } from './pages/CampaignAssetsPage'
 import { CampaignChatPage } from './pages/CampaignChatPage'
 import { CampaignCreatePage } from './pages/CampaignCreatePage'
+import { CampaignMasterAssetsPage } from './pages/CampaignMasterAssetsPage'
+import { CampaignMasterChatPage } from './pages/CampaignMasterChatPage'
+import { CampaignMasterParticipantsPage } from './pages/CampaignMasterParticipantsPage'
+import { CampaignMasterProgressPage } from './pages/CampaignMasterProgressPage'
+import { CampaignMasterSettingsPage } from './pages/CampaignMasterSettingsPage'
 import { CampaignMenuPage } from './pages/CampaignMenuPage'
+import { CampaignProgressPage } from './pages/CampaignProgressPage'
 import { CampaignsPage } from './pages/CampaignsPage'
 import { CampaignRoomLayout } from './modules/campaigns/CampaignRoomLayout'
+import { CampaignMasterLayout } from './modules/campaigns/CampaignMasterLayout'
 import { CharacterCampaignFormPage } from './pages/CharacterCampaignFormPage'
 import { CharacterCampaignSelectPage } from './pages/CharacterCampaignSelectPage'
 import { CharacterClassicPage } from './pages/CharacterClassicPage'
@@ -82,11 +89,20 @@ function AppRoutes() {
           <Route path="/home" element={<HomePage />} />
           <Route path="/campaigns" element={<CampaignsPage />} />
           <Route path="/campaigns/new" element={<CampaignCreatePage />} />
+          <Route path="/campaigns/:campaignId/master" element={<CampaignMasterLayout />}>
+            <Route index element={<Navigate to="settings" replace />} />
+            <Route path="settings" element={<CampaignMasterSettingsPage />} />
+            <Route path="participants" element={<CampaignMasterParticipantsPage />} />
+            <Route path="chat" element={<CampaignMasterChatPage />} />
+            <Route path="assets" element={<CampaignMasterAssetsPage />} />
+            <Route path="progress" element={<CampaignMasterProgressPage />} />
+          </Route>
           <Route path="/campaigns/:campaignId" element={<CampaignRoomLayout />}>
             <Route index element={<Navigate to="menu" replace />} />
             <Route path="menu" element={<CampaignMenuPage />} />
             <Route path="chat" element={<CampaignChatPage />} />
             <Route path="assets" element={<CampaignAssetsPage />} />
+            <Route path="progress" element={<CampaignProgressPage />} />
             <Route path="achievements" element={<CampaignAchievementsPage />} />
           </Route>
           <Route path="/calendar" element={<CalendarPage />} />

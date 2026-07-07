@@ -19,7 +19,23 @@ type Store interface {
 	ListCampaignsForUser(userID string) []models.Campaign
 	GetCampaign(id string) (models.Campaign, bool)
 	CreateCampaign(campaign models.Campaign, questionnaire models.CharacterQuestionnaire) models.Campaign
+	UpdateCampaign(campaignID string, update models.UpdateCampaignRequest) (models.Campaign, bool)
 	IsCampaignMember(campaignID, userID string) bool
+	IsCampaignMaster(campaignID, userID string) bool
+	JoinCampaign(campaignID, userID string) (models.Campaign, error)
+	LeaveCampaign(campaignID, userID string) error
+	DeleteCampaign(campaignID, masterID string) error
+	PublishCampaignInvitation(campaignID, authorID, authorName string) (models.NewsPost, models.Campaign, error)
+
+	// Campaign assets
+	ListCampaignAssets(campaignID string) []models.CampaignAsset
+	CreateCampaignAsset(campaignID string, asset models.CampaignAsset) models.CampaignAsset
+	UpdateCampaignAsset(campaignID, assetID string, asset models.CampaignAsset) (models.CampaignAsset, bool)
+	DeleteCampaignAsset(campaignID, assetID string) bool
+
+	// Campaign progress
+	GetCampaignProgress(campaignID string) (models.CampaignProgress, bool)
+	SaveCampaignProgress(progress models.CampaignProgress) models.CampaignProgress
 
 	// Questionnaire
 	GetQuestionnaire(campaignID string) (models.CharacterQuestionnaire, bool)

@@ -1,5 +1,49 @@
 export type CampaignStatus = 'active' | 'paused' | 'completed'
 
+export type CampaignAssetType = 'map' | 'handout' | 'note' | 'link'
+
+export interface CampaignAsset {
+  id: string
+  campaignId: string
+  title: string
+  type: CampaignAssetType
+  description: string
+  url?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface CampaignMilestone {
+  id: string
+  title: string
+  description: string
+  completed: boolean
+  completedAt?: string
+  order: number
+}
+
+export interface CampaignProgress {
+  campaignId: string
+  summary: string
+  currentChapter: string
+  milestones: CampaignMilestone[]
+  updatedAt?: string
+}
+
+export interface CampaignUpdateInput {
+  name: string
+  place: string
+  setting: string
+  maxPlayers: number
+  level: string
+  extraParams: string
+  antiAchievementPool: string[]
+  sessionDate: string
+  sessionTime: string
+  lastSession: string
+  status: CampaignStatus
+}
+
 export interface Campaign {
   id: string
   name: string
@@ -18,6 +62,7 @@ export interface Campaign {
   sessionTime?: string
   lastSession?: string
   status: CampaignStatus
+  invitationPostId?: string
 }
 
 export interface CampaignCreateInput {

@@ -114,8 +114,8 @@ export function CampaignCreatePage() {
     setError(null)
 
     try {
-      await createCampaign(form, questionnaireSettings, antiAchievementPool)
-      navigate('/campaigns')
+      const campaign = await createCampaign(form, questionnaireSettings, antiAchievementPool)
+      navigate(`/campaigns/${campaign.id}/master`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось создать кампанию')
     } finally {

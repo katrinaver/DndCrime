@@ -8,6 +8,7 @@ const (
 	NotificationCampaignChatMessage NotificationType = "campaign_chat_message"
 	NotificationNewsPost          NotificationType = "news_post"
 	NotificationCalendarReminder  NotificationType = "calendar_reminder"
+	NotificationCampaignJoined    NotificationType = "campaign_joined"
 )
 
 // Notification — уведомление для игрока.

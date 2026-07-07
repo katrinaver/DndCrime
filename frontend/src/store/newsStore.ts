@@ -8,6 +8,8 @@ interface NewsState {
   error: string | null
   fetchPosts: () => Promise<void>
   publishPost: (content: string, campaign?: string) => Promise<void>
+  prependPost: (post: NewsPost) => void
+  updatePostInviteMeta: (postId: string, players: number, maxPlayers: number) => void
   addComment: (postId: string, content: string) => Promise<void>
   reset: () => void
 }
@@ -40,6 +42,20 @@ export const useNewsStore = create<NewsState>((set) => ({
   publishPost: async (content, campaign) => {
     const post = await newsApi.createNewsPost(content, campaign)
     set((state) => ({ posts: sortPosts([post, ...state.posts]) }))
+  },
+
+  prependPost: (post) => {
+    set((state) => ({ posts: sortPosts([post, ...state.posts.filter((p) => p.id !== post.id)]) }))
+  },
+
+  updatePostInviteMeta: (postId, players, maxPlayers) => {
+    set((state) => ({
+      posts: state.posts.map((post) =>
+        post.id === postId && post.inviteMeta
+          ? { ...post, inviteMeta: { ...post.inviteMeta, players, maxPlayers } }
+          : post,
+      ),
+    }))
   },
 
   addComment: async (postId, content) => {

@@ -35,14 +35,37 @@ type UpdateChatMessageRequest struct {
 }
 
 // News feed (страница новостей).
+type NewsPostKind string
+
+const (
+	NewsPostKindDefault        NewsPostKind = ""
+	NewsPostKindCampaignInvite NewsPostKind = "campaign_invite"
+)
+
+type CampaignInviteMeta struct {
+	CampaignName string         `json:"campaignName"`
+	MasterName   string         `json:"masterName"`
+	Place        string         `json:"place"`
+	Setting      string         `json:"setting"`
+	Level        string         `json:"level"`
+	MaxPlayers   int            `json:"maxPlayers"`
+	Players      int            `json:"players"`
+	Status       CampaignStatus `json:"status"`
+	SessionDate  string         `json:"sessionDate,omitempty"`
+	SessionTime  string         `json:"sessionTime,omitempty"`
+}
+
 type NewsPost struct {
-	ID        string        `json:"id"`
-	AuthorID  string        `json:"authorId"`
-	Author    string        `json:"author"`
-	Content   string        `json:"content"`
-	Campaign  string        `json:"campaign,omitempty"`
-	CreatedAt time.Time     `json:"createdAt"`
-	Comments  []NewsComment `json:"comments"`
+	ID         string              `json:"id"`
+	AuthorID   string              `json:"authorId"`
+	Author     string              `json:"author"`
+	Content    string              `json:"content"`
+	Campaign   string              `json:"campaign,omitempty"`
+	CampaignID string              `json:"campaignId,omitempty"`
+	Kind       NewsPostKind        `json:"kind,omitempty"`
+	InviteMeta *CampaignInviteMeta `json:"inviteMeta,omitempty"`
+	CreatedAt  time.Time           `json:"createdAt"`
+	Comments   []NewsComment       `json:"comments"`
 }
 
 type NewsComment struct {

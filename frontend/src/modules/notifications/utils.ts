@@ -4,12 +4,14 @@ const TYPE_LABELS: Record<NotificationType, string> = {
   campaign_chat_message: 'Чат кампании',
   news_post: 'Новости',
   calendar_reminder: 'Календарь',
+  campaign_joined: 'Кампания',
 }
 
 const TYPE_ICONS: Record<NotificationType, string> = {
   campaign_chat_message: '💬',
   news_post: '📢',
   calendar_reminder: '📅',
+  campaign_joined: '✅',
 }
 
 export function getNotificationTypeLabel(type: NotificationType): string {
@@ -31,6 +33,8 @@ export function getNotificationLink(notification: Notification): string | null {
         return `/campaigns/${notification.campaignId}/menu`
       }
       return '/calendar'
+    case 'campaign_joined':
+      return notification.campaignId ? `/campaigns/${notification.campaignId}/menu` : '/campaigns'
     default:
       return null
   }

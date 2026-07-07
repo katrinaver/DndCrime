@@ -125,6 +125,25 @@ func EnsureMySQLSchema(ctx context.Context, db *sql.DB) error {
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 		`INSERT IGNORE INTO chats (id, type, campaign_id, created_at)
 			VALUES ('chat-general', 'general', '', UTC_TIMESTAMP(6))`,
+		`CREATE TABLE IF NOT EXISTS campaign_assets (
+			id VARCHAR(32) PRIMARY KEY,
+			campaign_id VARCHAR(32) NOT NULL,
+			data JSON NOT NULL,
+			created_at DATETIME(6) NOT NULL,
+			updated_at DATETIME(6) NOT NULL,
+			INDEX idx_campaign_assets_campaign (campaign_id),
+			CONSTRAINT fk_campaign_assets_campaign
+				FOREIGN KEY (campaign_id) REFERENCES campaigns(id)
+				ON DELETE CASCADE
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+		`CREATE TABLE IF NOT EXISTS campaign_progress (
+			campaign_id VARCHAR(32) PRIMARY KEY,
+			data JSON NOT NULL,
+			updated_at DATETIME(6) NOT NULL,
+			CONSTRAINT fk_campaign_progress_campaign
+				FOREIGN KEY (campaign_id) REFERENCES campaigns(id)
+				ON DELETE CASCADE
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 	}
 
 	for _, statement := range statements {

@@ -2,6 +2,7 @@ export type NotificationType =
   | 'campaign_chat_message'
   | 'news_post'
   | 'calendar_reminder'
+  | 'campaign_joined'
 
 export interface Notification {
   id: string

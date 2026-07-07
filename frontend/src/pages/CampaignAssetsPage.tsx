@@ -1,21 +1,17 @@
+import { useEffect } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import type { CampaignRoomContext } from '../modules/campaigns/CampaignRoomLayout'
+import type { CampaignAssetType } from '../modules/campaigns/types'
+import { useCampaignStore } from '../store/campaignStore'
 
-export interface CampaignAsset {
-  id: string
-  title: string
-  type: 'map' | 'handout' | 'note' | 'link'
-  description: string
-}
-
-const assetTypeLabels: Record<CampaignAsset['type'], string> = {
+const assetTypeLabels: Record<CampaignAssetType, string> = {
   map: 'Карта',
   handout: 'Раздатка',
   note: 'Заметка',
   link: 'Ссылка',
 }
 
-const assetTypeStyles: Record<CampaignAsset['type'], string> = {
+const assetTypeStyles: Record<CampaignAssetType, string> = {
   map: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
   handout: 'border-blue-500/30 bg-blue-500/10 text-blue-400',
   note: 'border-amber-500/30 bg-amber-500/10 text-amber-400',
@@ -23,20 +19,21 @@ const assetTypeStyles: Record<CampaignAsset['type'], string> = {
 }
 
 export function CampaignAssetsPage() {
-  const { campaign: _campaign } = useOutletContext<CampaignRoomContext>()
-  const assets: CampaignAsset[] = []
+  const { campaign } = useOutletContext<CampaignRoomContext>()
+  const assets = useCampaignStore((s) => s.getCampaignAssets(campaign.id))
+  const fetchCampaignAssets = useCampaignStore((s) => s.fetchCampaignAssets)
+
+  useEffect(() => {
+    void fetchCampaignAssets(campaign.id)
+  }, [campaign.id, fetchCampaignAssets])
 
   return (
     <div className="rounded-xl border border-dnd-border bg-dnd-card p-6">
       <h3 className="text-lg font-semibold text-white">Ассеты кампании</h3>
-      <p className="mt-1 text-sm text-dnd-muted">
-        Карты, раздатки и материалы от мастера
-      </p>
+      <p className="mt-1 text-sm text-dnd-muted">Карты, раздатки и материалы от мастера</p>
 
       {assets.length === 0 ? (
-        <p className="mt-6 text-sm text-dnd-muted">
-          Материалы пока не добавлены. API для ассетов будет подключён позже.
-        </p>
+        <p className="mt-6 text-sm text-dnd-muted">Материалы пока не добавлены.</p>
       ) : (
         <ul className="mt-6 grid gap-4 sm:grid-cols-2">
           {assets.map((asset) => (
@@ -52,7 +49,19 @@ export function CampaignAssetsPage() {
                   {assetTypeLabels[asset.type]}
                 </span>
               </div>
-              <p className="mt-2 text-sm text-dnd-muted">{asset.description}</p>
+              {asset.description && (
+                <p className="mt-2 text-sm text-dnd-muted">{asset.description}</p>
+              )}
+              {asset.url && (
+                <a
+                  href={asset.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-block text-sm text-dnd-gold hover:underline"
+                >
+                  Открыть →
+                </a>
+              )}
             </li>
           ))}
         </ul>

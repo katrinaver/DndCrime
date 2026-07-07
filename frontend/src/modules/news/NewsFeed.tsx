@@ -2,7 +2,9 @@ import { FormEvent, useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { isRichTextEmpty, RichTextEditor } from '../../components/rich-text'
 import { useAuth } from '../../context/AuthContext'
+import { useCampaignStore } from '../../store/campaignStore'
 import { useNewsStore } from '../../store/newsStore'
+import { useNotificationStore } from '../../store/notificationStore'
 import { NewsPostCard } from './NewsPostCard'
 
 export function NewsFeed() {
@@ -12,8 +14,14 @@ export function NewsFeed() {
   const error = useNewsStore((s) => s.error)
   const publishPost = useNewsStore((s) => s.publishPost)
   const addComment = useNewsStore((s) => s.addComment)
+  const updatePostInviteMeta = useNewsStore((s) => s.updatePostInviteMeta)
+  const joinCampaign = useCampaignStore((s) => s.joinCampaign)
+  const refreshNotifications = useNotificationStore((s) => s.refresh)
+  const campaigns = useCampaignStore((s) => s.campaigns)
 
   const currentUser = user?.email?.split('@')[0] ?? 'Игрок'
+  const userCampaignIds = new Set(campaigns.map((c) => c.id))
+  const [toast, setToast] = useState<string | null>(null)
   const [newPostHtml, setNewPostHtml] = useState('')
   const [editorKey, setEditorKey] = useState(0)
   const [submitting, setSubmitting] = useState(false)
@@ -36,8 +44,24 @@ export function NewsFeed() {
     await addComment(postId, content)
   }
 
+  async function handleJoinCampaign(campaignId: string, postId: string) {
+    const campaign = await joinCampaign(campaignId)
+    updatePostInviteMeta(postId, campaign.players, campaign.maxPlayers)
+    void refreshNotifications()
+  }
+
+  function handleJoinSuccess(campaignName: string) {
+    setToast(`Вы добавлены в кампанию «${campaignName}»`)
+    window.setTimeout(() => setToast(null), 5000)
+  }
+
   return (
     <div className="space-y-6">
+      {toast && (
+        <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400">
+          {toast}
+        </p>
+      )}
       <form
         onSubmit={handlePublish}
         className="rounded-xl border border-dnd-border bg-dnd-card p-5 shadow-lg shadow-black/10"
@@ -91,7 +115,11 @@ export function NewsFeed() {
               key={post.id}
               post={post}
               currentUser={currentUser}
+              currentUserId={user?.id}
+              isCampaignMember={post.campaignId ? userCampaignIds.has(post.campaignId) : false}
               onAddComment={handleAddComment}
+              onJoinCampaign={handleJoinCampaign}
+              onJoinSuccess={handleJoinSuccess}
             />
           ))}
         </div>
