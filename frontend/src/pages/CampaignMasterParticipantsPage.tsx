@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { apiFetch } from '../lib/apiClient'
 import { Button } from '../components/ui/Button'
 import { CampaignPartyMemberCard } from '../modules/campaigns/CampaignPartyMemberCard'
 import type { CampaignMasterContext } from '../modules/campaigns/CampaignMasterLayout'
 import { useCharacterStore } from '../store/characterStore'
 import type { CharacterSummary } from '../modules/characters/types'
+import { apiFetch } from '../lib/apiClient'
 
 export function CampaignMasterParticipantsPage() {
   const { campaign } = useOutletContext<CampaignMasterContext>()
@@ -39,7 +39,7 @@ export function CampaignMasterParticipantsPage() {
   return (
     <div className="space-y-6">
       <section className="rounded-xl border border-dnd-border bg-dnd-card p-6">
-        <h3 className="text-lg font-semibold text-white">Участники кампании</h3>
+        <h3 className="text-lg font-semibold text-white">Игроки кампании</h3>
         <p className="mt-1 text-sm text-dnd-muted">
           {party.length} из {campaign.maxPlayers} слотов занято
         </p>
@@ -51,9 +51,12 @@ export function CampaignMasterParticipantsPage() {
         )}
 
         {party.length === 0 ? (
-          <p className="mt-6 text-sm text-dnd-muted">
-            Пока нет персонажей. Игроки могут создать их через раздел «Персонажи».
-          </p>
+          <div className="mt-6 flex flex-col items-center justify-center rounded-xl border border-dashed border-dnd-border bg-dnd-dark/20 px-6 py-12 text-center">
+            <p className="text-sm font-medium text-white">Игроков пока нет</p>
+            <p className="mt-2 max-w-md text-sm text-dnd-muted">
+              Когда участники присоединятся к кампании и создадут персонажей, они появятся здесь.
+            </p>
+          </div>
         ) : (
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {party.map((member) => (

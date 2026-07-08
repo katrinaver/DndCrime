@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
+import { CampaignMasterCard } from '../modules/campaigns/CampaignMasterCard'
 import { CampaignPartyMemberCard } from '../modules/campaigns/CampaignPartyMemberCard'
 import type { CampaignRoomContext } from '../modules/campaigns/CampaignRoomLayout'
 import { useCharacterStore } from '../store/characterStore'
@@ -18,6 +19,8 @@ export function CampaignMenuPage() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
+      <CampaignMasterCard campaign={campaign} />
+
       <section className="rounded-xl border border-dnd-border bg-dnd-card p-6">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-dnd-muted">
           О кампании

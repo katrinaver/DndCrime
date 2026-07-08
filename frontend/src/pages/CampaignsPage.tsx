@@ -4,6 +4,7 @@ import { Button } from '../components/ui/Button'
 import { useAuth } from '../context/AuthContext'
 import { useCampaigns } from '../modules/campaigns/CampaignContext'
 import type { Campaign, CampaignStatus } from '../modules/campaigns/types'
+import { getCampaignEntryPath, isCampaignMaster } from '../modules/campaigns/utils'
 import { useCampaignStore } from '../store/campaignStore'
 
 const statusLabels: Record<CampaignStatus, string> = {
@@ -30,13 +31,8 @@ export function CampaignsPage() {
 
   const myCampaigns = campaigns.filter((campaign) => userCampaignIds.includes(campaign.id))
 
-  function openCampaign(campaignId: string) {
-    const campaign = campaigns.find((c) => c.id === campaignId)
-    if (campaign && user?.id === campaign.masterId) {
-      navigate(`/campaigns/${campaignId}/master`)
-      return
-    }
-    navigate(`/campaigns/${campaignId}/menu`)
+  function openCampaign(campaign: Campaign) {
+    navigate(getCampaignEntryPath(campaign, user?.id))
   }
 
   async function handleLeave(campaign: Campaign, e: React.MouseEvent) {
@@ -107,6 +103,7 @@ export function CampaignsPage() {
             <table className="w-full min-w-[720px] text-left text-sm">
               <thead>
                 <tr className="border-b border-dnd-border bg-dnd-dark/50">
+                  <th className="px-6 py-3 font-medium text-dnd-muted">Роль</th>
                   <th className="px-6 py-3 font-medium text-dnd-muted">Название</th>
                   <th className="px-6 py-3 font-medium text-dnd-muted">Мастер</th>
                   <th className="px-6 py-3 font-medium text-dnd-muted">Игроки</th>
@@ -118,15 +115,26 @@ export function CampaignsPage() {
               </thead>
               <tbody>
                 {myCampaigns.map((campaign) => {
-                  const isMaster = user?.id === campaign.masterId
+                  const isMaster = isCampaignMaster(campaign, user?.id)
                   const isActing = actingId === campaign.id
 
                   return (
                     <tr
                       key={campaign.id}
-                      onClick={() => openCampaign(campaign.id)}
+                      onClick={() => openCampaign(campaign)}
                       className="cursor-pointer border-b border-dnd-border/60 transition last:border-0 hover:bg-dnd-dark/30"
                     >
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+                            isMaster
+                              ? 'border-dnd-gold/30 bg-dnd-gold/10 text-dnd-gold'
+                              : 'border-dnd-purple/30 bg-dnd-purple/10 text-dnd-purple-hover'
+                          }`}
+                        >
+                          {isMaster ? 'Мастер' : 'Игрок'}
+                        </span>
+                      </td>
                       <td className="px-6 py-4 font-medium text-white">{campaign.name}</td>
                       <td className="px-6 py-4 text-gray-300">{campaign.master}</td>
                       <td className="px-6 py-4 text-gray-300">

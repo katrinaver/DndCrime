@@ -5,5 +5,5 @@ import type { CampaignRoomContext } from '../modules/campaigns/CampaignRoomLayou
 export function CampaignChatPage() {
   const { campaign } = useOutletContext<CampaignRoomContext>()
 
-  return <CampaignChatPanel campaignId={campaign.id} campaignName={campaign.name} />
+  return <CampaignChatPanel campaignId={campaign.id} campaignName={campaign.name} masterId={campaign.masterId} />
 }

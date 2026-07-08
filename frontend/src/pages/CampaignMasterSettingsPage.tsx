@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { useNavigate, useOutletContext } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
 import { AntiAchievementsEditor } from '../modules/campaigns/AntiAchievementsEditor'
 import type { CampaignMasterContext } from '../modules/campaigns/CampaignMasterLayout'
@@ -42,12 +42,15 @@ function ViewField({ label, value }: { label: string; value: string }) {
 }
 
 export function CampaignMasterSettingsPage() {
+  const navigate = useNavigate()
   const { campaign } = useOutletContext<CampaignMasterContext>()
   const updateCampaign = useCampaignStore((s) => s.updateCampaign)
+  const deleteCampaign = useCampaignStore((s) => s.deleteCampaign)
 
   const [mode, setMode] = useState<'view' | 'edit'>('view')
   const [form, setForm] = useState(() => campaignToForm(campaign))
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
@@ -87,6 +90,27 @@ export function CampaignMasterSettingsPage() {
       setError(err instanceof Error ? err.message : 'Не удалось сохранить настройки')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (
+      !window.confirm(
+        `Удалить кампанию «${campaign.name}»? Это действие нельзя отменить.`,
+      )
+    ) {
+      return
+    }
+
+    setDeleting(true)
+    setError(null)
+    try {
+      await deleteCampaign(campaign.id)
+      navigate('/campaigns', { replace: true })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось удалить кампанию')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -146,6 +170,30 @@ export function CampaignMasterSettingsPage() {
               )}
             </div>
           </dl>
+        </section>
+
+        <section className="rounded-xl border border-red-500/30 bg-red-500/5 p-6">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-red-400">
+            Опасная зона
+          </h3>
+          <p className="mt-2 text-sm text-dnd-muted">
+            Удаление кампании необратимо. Все данные кампании, включая персонажей, ассеты и
+            прогресс, будут удалены.
+          </p>
+          {error && (
+            <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+              {error}
+            </p>
+          )}
+          <Button
+            type="button"
+            variant="secondary"
+            className="!mt-4 !w-auto border-red-500/30 text-red-400 hover:border-red-400 hover:text-red-300"
+            loading={deleting}
+            onClick={() => void handleDelete()}
+          >
+            Удалить кампанию
+          </Button>
         </section>
       </div>
     )

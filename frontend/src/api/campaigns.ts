@@ -91,10 +91,23 @@ export function fetchCampaignProgress(campaignId: string) {
   return apiFetch<CampaignProgress>(`/api/campaigns/${campaignId}/progress`)
 }
 
-export function saveCampaignProgress(campaignId: string, progress: Omit<CampaignProgress, 'campaignId' | 'updatedAt'>) {
+export function saveCampaignProgress(campaignId: string, progress: Pick<CampaignProgress, 'currentChapter'>) {
   return apiFetch<CampaignProgress>(`/api/campaigns/${campaignId}/progress`, {
     method: 'PUT',
     body: JSON.stringify(progress),
+  })
+}
+
+export function createCampaignProgressNote(campaignId: string, content: string) {
+  return apiFetch<CampaignProgress>(`/api/campaigns/${campaignId}/progress/notes`, {
+    method: 'POST',
+    body: JSON.stringify({ content }),
+  })
+}
+
+export function deleteCampaignProgressNote(campaignId: string, noteId: string) {
+  return apiFetch<void>(`/api/campaigns/${campaignId}/progress/notes/${noteId}`, {
+    method: 'DELETE',
   })
 }
 

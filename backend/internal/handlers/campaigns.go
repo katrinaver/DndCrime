@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/kate/dndcrime/internal/auth"
@@ -16,7 +17,7 @@ func (h *Handler) ListCampaigns(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, h.store.ListCampaignsForUser(user.ID))
+	httpx.WriteJSON(w, http.StatusOK, h.enrichCampaigns(h.store.ListCampaignsForUser(user.ID)))
 }
 
 func (h *Handler) GetCampaign(w http.ResponseWriter, r *http.Request) {
@@ -37,7 +38,7 @@ func (h *Handler) GetCampaign(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "campaign not found")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, campaign)
+	httpx.WriteJSON(w, http.StatusOK, h.enrichCampaign(campaign))
 }
 
 func (h *Handler) CreateCampaign(w http.ResponseWriter, r *http.Request) {
@@ -98,7 +99,7 @@ func (h *Handler) CreateCampaign(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	httpx.WriteJSON(w, http.StatusCreated, created)
+	httpx.WriteJSON(w, http.StatusCreated, h.enrichCampaign(created))
 }
 
 func (h *Handler) UpdateCampaign(w http.ResponseWriter, r *http.Request) {
@@ -129,7 +130,7 @@ func (h *Handler) UpdateCampaign(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "campaign not found")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, updated)
+	httpx.WriteJSON(w, http.StatusOK, h.enrichCampaign(updated))
 }
 
 func (h *Handler) ListCampaignAssets(w http.ResponseWriter, r *http.Request) {
@@ -256,6 +257,9 @@ func (h *Handler) GetCampaignProgress(w http.ResponseWriter, r *http.Request) {
 	if progress.CampaignID == "" {
 		progress.CampaignID = campaignID
 	}
+	if progress.Notes == nil {
+		progress.Notes = []models.CampaignProgressNote{}
+	}
 	httpx.WriteJSON(w, http.StatusOK, progress)
 }
 
@@ -280,11 +284,71 @@ func (h *Handler) SaveCampaignProgress(w http.ResponseWriter, r *http.Request) {
 
 	progress := models.CampaignProgress{
 		CampaignID:     campaignID,
-		Summary:        req.Summary,
 		CurrentChapter: req.CurrentChapter,
-		Milestones:     req.Milestones,
 	}
 	httpx.WriteJSON(w, http.StatusOK, h.store.SaveCampaignProgress(progress))
+}
+
+func (h *Handler) CreateCampaignProgressNote(w http.ResponseWriter, r *http.Request) {
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok {
+		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	campaignID := chi.URLParam(r, "campaignID")
+	if !h.store.IsCampaignMaster(campaignID, user.ID) {
+		httpx.WriteError(w, http.StatusForbidden, "forbidden")
+		return
+	}
+
+	var req models.CreateCampaignProgressNoteRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	if strings.TrimSpace(req.Content) == "" {
+		httpx.WriteError(w, http.StatusBadRequest, "content is required")
+		return
+	}
+
+	note := models.CampaignProgressNote{
+		Content:    req.Content,
+		AuthorID:   user.ID,
+		AuthorName: authorName(h, user),
+	}
+	progress, err := h.store.CreateCampaignProgressNote(campaignID, note)
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, progress)
+}
+
+func (h *Handler) DeleteCampaignProgressNote(w http.ResponseWriter, r *http.Request) {
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok {
+		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	campaignID := chi.URLParam(r, "campaignID")
+	if !h.store.IsCampaignMaster(campaignID, user.ID) {
+		httpx.WriteError(w, http.StatusForbidden, "forbidden")
+		return
+	}
+
+	noteID := chi.URLParam(r, "noteID")
+	_, err := h.store.DeleteCampaignProgressNote(campaignID, noteID)
+	if err != nil {
+		if err == store.ErrCampaignNotFound {
+			httpx.WriteError(w, http.StatusNotFound, "campaign not found")
+			return
+		}
+		httpx.WriteError(w, http.StatusNotFound, "note not found")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) PublishCampaignInvitation(w http.ResponseWriter, r *http.Request) {
@@ -306,7 +370,7 @@ func (h *Handler) PublishCampaignInvitation(w http.ResponseWriter, r *http.Reque
 		case store.ErrInvitationExists:
 			httpx.WriteJSON(w, http.StatusOK, map[string]any{
 				"post":     post,
-				"campaign": campaign,
+				"campaign": h.enrichCampaign(campaign),
 				"already":  true,
 			})
 		case store.ErrCampaignNotFound:
@@ -319,7 +383,7 @@ func (h *Handler) PublishCampaignInvitation(w http.ResponseWriter, r *http.Reque
 
 	httpx.WriteJSON(w, http.StatusCreated, map[string]any{
 		"post":     post,
-		"campaign": campaign,
+		"campaign": h.enrichCampaign(campaign),
 	})
 }
 
@@ -337,7 +401,7 @@ func (h *Handler) JoinCampaign(w http.ResponseWriter, r *http.Request) {
 		case store.ErrCampaignNotFound:
 			httpx.WriteError(w, http.StatusNotFound, "campaign not found")
 		case store.ErrAlreadyMember:
-			httpx.WriteJSON(w, http.StatusOK, campaign)
+			httpx.WriteJSON(w, http.StatusOK, h.enrichCampaign(campaign))
 		case store.ErrCampaignFull:
 			httpx.WriteError(w, http.StatusConflict, "campaign is full")
 		case store.ErrCampaignNotActive:
@@ -348,7 +412,7 @@ func (h *Handler) JoinCampaign(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, campaign)
+	httpx.WriteJSON(w, http.StatusOK, h.enrichCampaign(campaign))
 }
 
 func (h *Handler) LeaveCampaign(w http.ResponseWriter, r *http.Request) {
@@ -463,6 +527,27 @@ func (h *Handler) ListCampaignParty(w http.ResponseWriter, r *http.Request) {
 		summaries = append(summaries, c.ToSummary())
 	}
 	httpx.WriteJSON(w, http.StatusOK, summaries)
+}
+
+func (h *Handler) enrichCampaign(campaign models.Campaign) models.Campaign {
+	profile := models.CampaignMasterProfile{Name: campaign.MasterName}
+	if p, found := h.store.GetProfile(campaign.MasterID); found {
+		if p.Name != "" {
+			profile.Name = p.Name
+		}
+		profile.Description = p.Description
+		profile.AvatarURL = p.AvatarURL
+	}
+	campaign.MasterProfile = &profile
+	return campaign
+}
+
+func (h *Handler) enrichCampaigns(campaigns []models.Campaign) []models.Campaign {
+	enriched := make([]models.Campaign, len(campaigns))
+	for i, campaign := range campaigns {
+		enriched[i] = h.enrichCampaign(campaign)
+	}
+	return enriched
 }
 
 func buildQuestionnaireFields(settings []models.QuestionnaireFieldSetting) []models.QuestionnaireField {

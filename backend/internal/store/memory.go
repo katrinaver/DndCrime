@@ -1,6 +1,7 @@
 package store
 
 import (
+	"errors"
 	"sync"
 	"time"
 
@@ -50,7 +51,7 @@ func (s *MemoryStore) seed() {
 
 	campaign1 := models.Campaign{
 		ID: "1", Name: "Проклятие Страда", MasterID: master1, MasterName: "Алексей",
-		PlayerIDs: []string{"user-demo"}, Players: 5, Place: "Discord",
+		PlayerIDs: []string{"user-demo"}, Players: 1, Place: "Discord",
 		Setting: "Готика, хоррор и политика Баровии", MaxPlayers: 6, Level: "1",
 		AntiAchievementPool: []string{
 			"Попытался убедить дракона пожертвовать сокровища",
@@ -61,14 +62,72 @@ func (s *MemoryStore) seed() {
 
 	campaign2 := models.Campaign{
 		ID: "2", Name: "Таверна у Красного Дракона", MasterID: master2, MasterName: "Мария",
-		PlayerIDs: []string{"user-demo"}, Players: 4, Place: "Zoom",
-		Setting: "Городское приключение с интригами", MaxPlayers: 6, Level: "1",
+		PlayerIDs: []string{"user-demo"}, Players: 1, Place: "Zoom",
+		Setting: "Городское приключение с интригами", MaxPlayers: 6, Level: "3",
 		AntiAchievementPool: []string{"Уронил факел в собственный инвентарь"},
-		LastSession: "15.06.2026", Status: models.CampaignPaused, CreatedAt: now, UpdatedAt: now,
+		SessionDate: "2026-07-15", SessionTime: "19:00",
+		LastSession: "15.06.2026", Status: models.CampaignActive, CreatedAt: now, UpdatedAt: now,
+	}
+
+	invitePostID := "invite-post-3"
+	campaign3 := models.Campaign{
+		ID: "3", Name: "Подземелье Чёрного Змея", MasterID: master2, MasterName: "Мария",
+		PlayerIDs: []string{}, Players: 0, Place: "Discord",
+		Setting: "Классическое подземелье для группы искателей приключений", MaxPlayers: 5, Level: "5",
+		AntiAchievementPool: []string{"Случайно активировал ловушку на себе"},
+		SessionDate: "2026-07-20", SessionTime: "18:30",
+		Status: models.CampaignActive, InvitationPostID: invitePostID, CreatedAt: now, UpdatedAt: now,
 	}
 
 	s.campaigns["1"] = campaign1
 	s.campaigns["2"] = campaign2
+	s.campaigns["3"] = campaign3
+
+	s.profiles["user-demo"] = models.UserProfile{
+		UserID:      "user-demo",
+		Email:       "dev@dndcrime.local",
+		Name:        "Dev Adventurer",
+		Description: "Играю за волшебников и люблю городские интриги.",
+		UpdatedAt:   now,
+	}
+	s.profiles[master1] = models.UserProfile{
+		UserID:      master1,
+		Email:       "alexey@example.com",
+		Name:        "Алексей",
+		Description: "Мастер с десятилетним опытом. Люблю готику, хоррор и политические интриги в кампаниях.",
+		UpdatedAt:   now,
+	}
+	s.profiles[master2] = models.UserProfile{
+		UserID:      master2,
+		Email:       "maria@example.com",
+		Name:        "Мария",
+		Description: "Веду городские кампании и one-shot'ы для новичков. Акцент на ролевой игре и юморе.",
+		UpdatedAt:   now,
+	}
+
+	s.campaignProgress["2"] = models.CampaignProgress{
+		CampaignID:     "2",
+		CurrentChapter: "Глава 2: Тайны таверны",
+		Notes: []models.CampaignProgressNote{
+			{
+				ID:         "note-seed-2",
+				Content:    "<p>Группа раскрыла заговор владельца таверны и спасла купца.</p>",
+				AuthorID:   master2,
+				AuthorName: "Мария",
+				CreatedAt:  now,
+			},
+		},
+		UpdatedAt: now,
+	}
+
+	s.questionnaires["2"] = models.CharacterQuestionnaire{
+		CampaignID: "2", Title: "Анкета: Таверна у Красного Дракона",
+		Description: "Городское приключение с интригами.",
+		Fields: []models.QuestionnaireField{
+			{ID: "guild", Label: "Связь с гильдией", Type: models.FieldText},
+			{ID: "secret", Label: "Тайна персонажа", Type: models.FieldTextarea},
+		},
+	}
 
 	s.campaignAssets["asset-1"] = models.CampaignAsset{
 		ID: "asset-1", CampaignID: "1", Title: "Карта Баровии",
@@ -76,12 +135,23 @@ func (s *MemoryStore) seed() {
 		CreatedAt: now, UpdatedAt: now,
 	}
 
+	s.campaignAssets["asset-2"] = models.CampaignAsset{
+		ID: "asset-2", CampaignID: "2", Title: "План таверны",
+		Type: models.AssetTypeMap, Description: "Схема этажей и потайных ходов",
+		CreatedAt: now, UpdatedAt: now,
+	}
+
 	s.campaignProgress["1"] = models.CampaignProgress{
-		CampaignID: "1", Summary: "Группа прибыла в деревню Баровия и встретила Страда.",
+		CampaignID:     "1",
 		CurrentChapter: "Глава 1: Прибытие",
-		Milestones: []models.CampaignMilestone{
-			{ID: "ms-1", Title: "Прибытие в Баровию", Description: "Добраться до деревни", Completed: true, CompletedAt: &now, Order: 1},
-			{ID: "ms-2", Title: "Встреча со Страдом", Description: "Первая аудиенция у властителя", Completed: false, Order: 2},
+		Notes: []models.CampaignProgressNote{
+			{
+				ID:         "note-seed-1",
+				Content:    "<p>Группа прибыла в деревню Баровия и встретила Страда.</p>",
+				AuthorID:   master1,
+				AuthorName: "Алексей",
+				CreatedAt:  now,
+			},
 		},
 		UpdatedAt: now,
 	}
@@ -111,13 +181,33 @@ func (s *MemoryStore) seed() {
 	}
 	s.characters["1"] = char1
 
+	char2 := models.Character{
+		ID: "2", OwnerID: "user-demo", Name: "Торин Железный Кулак", ClassName: "Воин", Level: 3,
+		Species: "Дварф", Background: "Солдат", PlayerName: "Dev Adventurer", Alignment: "Законопослушный нейтральный",
+		ExperiencePoints: 900,
+		Abilities: models.AbilityScores{Strength: 16, Dexterity: 10, Constitution: 15, Intelligence: 10, Wisdom: 12, Charisma: 8},
+		ArmorClass: 18, Initiative: 0, Speed: 25, MaxHP: 28, CurrentHP: 28, HitDice: "3d10", ProficiencyBonus: 2,
+		SavingThrows: []string{"Сила", "Телосложение"}, Skills: []string{"Атлетика", "Запугивание"},
+		PersonalityTraits: "Никогда не сдаётся и всегда прикрывает товарищей.",
+		CreationType: models.CreationClassic, CampaignID: "2", CampaignName: campaign2.Name,
+		CreatedAt: now, UpdatedAt: now,
+	}
+	s.characters["2"] = char2
+
 	campaignChat1 := models.Chat{ID: "chat-campaign-1", Type: models.ChatTypeCampaign, CampaignID: "1", CreatedAt: now}
+	campaignChat2 := models.Chat{ID: "chat-campaign-2", Type: models.ChatTypeCampaign, CampaignID: "2", CreatedAt: now}
 	generalChat := models.Chat{ID: "chat-general", Type: models.ChatTypeGeneral, CreatedAt: now}
 	s.chats[campaignChat1.ID] = campaignChat1
+	s.chats[campaignChat2.ID] = campaignChat2
 	s.chats[generalChat.ID] = generalChat
 
 	s.messages[campaignChat1.ID] = []models.ChatMessage{
-		{ID: id.New(), ChatID: campaignChat1.ID, AuthorID: master1, AuthorName: "Алексей", Text: "Сессия в субботу в 19:00", CreatedAt: now},
+		{ID: id.New(), ChatID: campaignChat1.ID, AuthorID: master1, AuthorName: "Мастер", Text: "Сессия в субботу в 19:00", CreatedAt: now},
+		{ID: id.New(), ChatID: campaignChat1.ID, AuthorID: "user-demo", AuthorName: "Эларион Сумрачный", Text: "Буду! Могу подготовить ритуал обнаружения.", CreatedAt: now},
+	}
+	s.messages[campaignChat2.ID] = []models.ChatMessage{
+		{ID: id.New(), ChatID: campaignChat2.ID, AuthorID: master2, AuthorName: "Мастер", Text: "Встречаемся у входа в таверну.", CreatedAt: now},
+		{ID: id.New(), ChatID: campaignChat2.ID, AuthorID: "user-demo", AuthorName: "Торин Железный Кулак", Text: "Я зайду с черного хода, если что.", CreatedAt: now},
 	}
 	s.messages[generalChat.ID] = []models.ChatMessage{
 		{ID: id.New(), ChatID: generalChat.ID, AuthorID: "user-a", AuthorName: "Мария", Text: "Кто играет в субботу?", CreatedAt: now},
@@ -129,6 +219,20 @@ func (s *MemoryStore) seed() {
 		Campaign: campaign1.Name, CreatedAt: now, Comments: []models.NewsComment{},
 	}
 	s.newsPosts[post.ID] = post
+
+	invitePost := models.NewsPost{
+		ID:         invitePostID,
+		AuthorID:   master2,
+		Author:     "Мария",
+		Content:    buildInvitationContent(campaign3),
+		Campaign:   campaign3.Name,
+		CampaignID: campaign3.ID,
+		Kind:       models.NewsPostKindCampaignInvite,
+		InviteMeta: inviteMetaFromCampaign(campaign3),
+		CreatedAt:  now,
+		Comments:   []models.NewsComment{},
+	}
+	s.newsPosts[invitePost.ID] = invitePost
 
 	s.calendar["ev1"] = models.CalendarEvent{
 		ID: "ev1", Date: "2026-07-05", Title: "Сессия #12", CampaignID: "1", Campaign: campaign1.Name, CreatedAt: now,
@@ -323,9 +427,12 @@ func (s *MemoryStore) GetCampaignProgress(campaignID string) (models.CampaignPro
 	if !ok {
 		return models.CampaignProgress{
 			CampaignID: campaignID,
-			Milestones: []models.CampaignMilestone{},
+			Notes:      []models.CampaignProgressNote{},
 			UpdatedAt:  Now(),
 		}, false
+	}
+	if progress.Notes == nil {
+		progress.Notes = []models.CampaignProgressNote{}
 	}
 	return progress, true
 }
@@ -334,11 +441,74 @@ func (s *MemoryStore) SaveCampaignProgress(progress models.CampaignProgress) mod
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	progress.UpdatedAt = Now()
-	if progress.Milestones == nil {
-		progress.Milestones = []models.CampaignMilestone{}
+	if progress.Notes == nil {
+		progress.Notes = []models.CampaignProgressNote{}
 	}
-	s.campaignProgress[progress.CampaignID] = progress
-	return progress
+	existing := s.campaignProgress[progress.CampaignID]
+	existing.CampaignID = progress.CampaignID
+	existing.CurrentChapter = progress.CurrentChapter
+	existing.UpdatedAt = progress.UpdatedAt
+	if existing.Notes == nil {
+		existing.Notes = []models.CampaignProgressNote{}
+	}
+	s.campaignProgress[progress.CampaignID] = existing
+	return existing
+}
+
+func (s *MemoryStore) CreateCampaignProgressNote(campaignID string, note models.CampaignProgressNote) (models.CampaignProgress, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	progress, ok := s.campaignProgress[campaignID]
+	if !ok {
+		progress = models.CampaignProgress{
+			CampaignID: campaignID,
+			Notes:      []models.CampaignProgressNote{},
+		}
+	}
+	if progress.Notes == nil {
+		progress.Notes = []models.CampaignProgressNote{}
+	}
+	if note.ID == "" {
+		note.ID = id.New()
+	}
+	if note.CreatedAt.IsZero() {
+		note.CreatedAt = Now()
+	}
+	progress.Notes = append([]models.CampaignProgressNote{note}, progress.Notes...)
+	progress.UpdatedAt = Now()
+	s.campaignProgress[campaignID] = progress
+	return progress, nil
+}
+
+func (s *MemoryStore) DeleteCampaignProgressNote(campaignID, noteID string) (models.CampaignProgress, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	progress, ok := s.campaignProgress[campaignID]
+	if !ok {
+		return models.CampaignProgress{}, ErrCampaignNotFound
+	}
+	if progress.Notes == nil {
+		progress.Notes = []models.CampaignProgressNote{}
+	}
+
+	next := make([]models.CampaignProgressNote, 0, len(progress.Notes))
+	found := false
+	for _, note := range progress.Notes {
+		if note.ID == noteID {
+			found = true
+			continue
+		}
+		next = append(next, note)
+	}
+	if !found {
+		return models.CampaignProgress{}, errors.New("note not found")
+	}
+	progress.Notes = next
+	progress.UpdatedAt = Now()
+	s.campaignProgress[campaignID] = progress
+	return progress, nil
 }
 
 func (s *MemoryStore) IsCampaignMember(campaignID, userID string) bool {

@@ -1,22 +1,12 @@
 import { useEffect } from 'react'
 import { useOutletContext } from 'react-router-dom'
+import {
+  assetActionLabel,
+  assetTypeLabels,
+  assetTypeStyles,
+} from '../modules/campaigns/assetUtils'
 import type { CampaignRoomContext } from '../modules/campaigns/CampaignRoomLayout'
-import type { CampaignAssetType } from '../modules/campaigns/types'
 import { useCampaignStore } from '../store/campaignStore'
-
-const assetTypeLabels: Record<CampaignAssetType, string> = {
-  map: 'Карта',
-  handout: 'Раздатка',
-  note: 'Заметка',
-  link: 'Ссылка',
-}
-
-const assetTypeStyles: Record<CampaignAssetType, string> = {
-  map: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
-  handout: 'border-blue-500/30 bg-blue-500/10 text-blue-400',
-  note: 'border-amber-500/30 bg-amber-500/10 text-amber-400',
-  link: 'border-dnd-purple/30 bg-dnd-purple/10 text-dnd-purple-hover',
-}
 
 export function CampaignAssetsPage() {
   const { campaign } = useOutletContext<CampaignRoomContext>()
@@ -30,7 +20,7 @@ export function CampaignAssetsPage() {
   return (
     <div className="rounded-xl border border-dnd-border bg-dnd-card p-6">
       <h3 className="text-lg font-semibold text-white">Ассеты кампании</h3>
-      <p className="mt-1 text-sm text-dnd-muted">Карты, раздатки и материалы от мастера</p>
+      <p className="mt-1 text-sm text-dnd-muted">Карты, раздатки и файлы от мастера</p>
 
       {assets.length === 0 ? (
         <p className="mt-6 text-sm text-dnd-muted">Материалы пока не добавлены.</p>
@@ -57,9 +47,10 @@ export function CampaignAssetsPage() {
                   href={asset.url}
                   target="_blank"
                   rel="noopener noreferrer"
+                  download={asset.type === 'file' ? asset.title : undefined}
                   className="mt-2 inline-block text-sm text-dnd-gold hover:underline"
                 >
-                  Открыть →
+                  {assetActionLabel(asset.type)} →
                 </a>
               )}
             </li>

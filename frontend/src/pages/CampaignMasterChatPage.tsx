@@ -5,5 +5,5 @@ import type { CampaignMasterContext } from '../modules/campaigns/CampaignMasterL
 export function CampaignMasterChatPage() {
   const { campaign } = useOutletContext<CampaignMasterContext>()
 
-  return <CampaignChatPanel campaignId={campaign.id} campaignName={campaign.name} />
+  return <CampaignChatPanel campaignId={campaign.id} campaignName={campaign.name} masterId={campaign.masterId} />
 }

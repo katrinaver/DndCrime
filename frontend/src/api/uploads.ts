@@ -7,7 +7,10 @@ export interface UploadResponse {
   key: string
 }
 
-export async function uploadFile(file: File, kind: 'attachment' | 'avatar' = 'attachment') {
+export async function uploadFile(
+  file: File,
+  kind: 'attachment' | 'avatar' | 'campaign-asset' = 'attachment',
+) {
   if (file.size > MAX_UPLOAD_BYTES) {
     throw new Error(`Файл слишком большой (макс. ${MAX_UPLOAD_BYTES / (1024 * 1024)} МБ)`)
   }

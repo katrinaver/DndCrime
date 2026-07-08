@@ -9,6 +9,7 @@ const (
 	AssetTypeHandout CampaignAssetType = "handout"
 	AssetTypeNote    CampaignAssetType = "note"
 	AssetTypeLink    CampaignAssetType = "link"
+	AssetTypeFile    CampaignAssetType = "file"
 )
 
 type CampaignAsset struct {
@@ -36,6 +37,14 @@ type UpdateCampaignAssetRequest struct {
 	URL         string            `json:"url,omitempty"`
 }
 
+type CampaignProgressNote struct {
+	ID         string    `json:"id"`
+	Content    string    `json:"content"`
+	AuthorID   string    `json:"authorId"`
+	AuthorName string    `json:"authorName"`
+	CreatedAt  time.Time `json:"createdAt"`
+}
+
 type CampaignMilestone struct {
 	ID          string     `json:"id"`
 	Title       string     `json:"title"`
@@ -46,15 +55,18 @@ type CampaignMilestone struct {
 }
 
 type CampaignProgress struct {
-	CampaignID     string              `json:"campaignId"`
-	Summary        string              `json:"summary"`
-	CurrentChapter string              `json:"currentChapter"`
-	Milestones     []CampaignMilestone `json:"milestones"`
-	UpdatedAt      time.Time           `json:"updatedAt"`
+	CampaignID     string                 `json:"campaignId"`
+	CurrentChapter string                 `json:"currentChapter"`
+	Notes          []CampaignProgressNote `json:"notes"`
+	Summary        string                 `json:"summary,omitempty"`
+	Milestones     []CampaignMilestone    `json:"milestones,omitempty"`
+	UpdatedAt      time.Time              `json:"updatedAt"`
 }
 
 type SaveCampaignProgressRequest struct {
-	Summary        string              `json:"summary"`
-	CurrentChapter string              `json:"currentChapter"`
-	Milestones     []CampaignMilestone `json:"milestones"`
+	CurrentChapter string `json:"currentChapter"`
+}
+
+type CreateCampaignProgressNoteRequest struct {
+	Content string `json:"content"`
 }

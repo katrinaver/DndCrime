@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { CampaignProgressView } from '../modules/campaigns/CampaignProgressView'
+import { CampaignProgressNotesFeed } from '../modules/campaigns/CampaignProgressNotesFeed'
 import type { CampaignRoomContext } from '../modules/campaigns/CampaignRoomLayout'
 import type { CampaignProgress } from '../modules/campaigns/types'
 import { useCampaignStore } from '../store/campaignStore'
@@ -41,5 +41,5 @@ export function CampaignProgressPage() {
     )
   }
 
-  return <CampaignProgressView progress={progress} />
+  return <CampaignProgressNotesFeed progress={progress} />
 }

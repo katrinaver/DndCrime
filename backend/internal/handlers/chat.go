@@ -27,7 +27,7 @@ func (h *Handler) ListCampaignChatMessages(w http.ResponseWriter, r *http.Reques
 		httpx.WriteError(w, http.StatusNotFound, "chat not found")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, h.store.ListChatMessages(chat.ID))
+	httpx.WriteJSON(w, http.StatusOK, h.enrichCampaignChatMessages(campaignID, h.store.ListChatMessages(chat.ID)))
 }
 
 func (h *Handler) CreateCampaignChatMessage(w http.ResponseWriter, r *http.Request) {
@@ -62,7 +62,7 @@ func (h *Handler) CreateCampaignChatMessage(w http.ResponseWriter, r *http.Reque
 	msg := h.store.CreateChatMessage(models.ChatMessage{
 		ChatID:     chat.ID,
 		AuthorID:   user.ID,
-		AuthorName: authorName(h, user),
+		AuthorName: h.campaignChatAuthorName(campaignID, user.ID),
 		Text:       req.Text,
 	})
 	httpx.WriteJSON(w, http.StatusCreated, msg)
@@ -205,4 +205,34 @@ func authorName(h *Handler, user auth.User) string {
 		return profile.Name
 	}
 	return user.Email
+}
+
+func (h *Handler) campaignChatAuthorName(campaignID, userID string) string {
+	if campaign, found := h.store.GetCampaign(campaignID); found && campaign.MasterID == userID {
+		return "Мастер"
+	}
+
+	for _, character := range h.store.ListCharactersByCampaign(campaignID) {
+		if character.OwnerID == userID && character.Name != "" {
+			return character.Name
+		}
+	}
+
+	if profile, found := h.store.GetProfile(userID); found {
+		if profile.Name != "" {
+			return profile.Name
+		}
+		if profile.Email != "" {
+			return profile.Email
+		}
+	}
+
+	return "Игрок"
+}
+
+func (h *Handler) enrichCampaignChatMessages(campaignID string, messages []models.ChatMessage) []models.ChatMessage {
+	for i := range messages {
+		messages[i].AuthorName = h.campaignChatAuthorName(campaignID, messages[i].AuthorID)
+	}
+	return messages
 }

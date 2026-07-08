@@ -3,6 +3,7 @@ import { BackLink } from '../../components/BackLink'
 import { useAuth } from '../../context/AuthContext'
 import { CampaignMasterInvitationBanner } from './CampaignMasterInvitationBanner'
 import { useCampaigns } from './CampaignContext'
+import { isCampaignMaster } from './utils'
 import type { Campaign, CampaignStatus } from './types'
 
 export type CampaignMasterContext = {
@@ -23,7 +24,7 @@ const statusStyles: Record<CampaignStatus, string> = {
 
 const masterNavItems = [
   { to: 'settings', label: 'Настройки' },
-  { to: 'participants', label: 'Участники' },
+  { to: 'participants', label: 'Игроки' },
   { to: 'chat', label: 'Чат' },
   { to: 'assets', label: 'Ассеты' },
   { to: 'progress', label: 'Прогресс' },
@@ -41,10 +42,14 @@ function masterNavClass({ isActive }: { isActive: boolean }) {
 export function CampaignMasterLayout() {
   const { campaignId } = useParams<{ campaignId: string }>()
   const { user } = useAuth()
-  const { campaigns, userCampaignIds } = useCampaigns()
+  const { campaigns, userCampaignIds, loading } = useCampaigns()
 
   const campaign = campaigns.find((c) => c.id === campaignId)
-  const isMaster = campaign && user?.id === campaign.masterId
+  const isMaster = campaign ? isCampaignMaster(campaign, user?.id) : false
+
+  if (loading) {
+    return <p className="text-sm text-dnd-muted">Загрузка кампании…</p>
+  }
 
   if (!campaignId || !campaign || !userCampaignIds.includes(campaignId) || !isMaster) {
     return <Navigate to="/campaigns" replace />

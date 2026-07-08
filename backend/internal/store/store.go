@@ -36,6 +36,8 @@ type Store interface {
 	// Campaign progress
 	GetCampaignProgress(campaignID string) (models.CampaignProgress, bool)
 	SaveCampaignProgress(progress models.CampaignProgress) models.CampaignProgress
+	CreateCampaignProgressNote(campaignID string, note models.CampaignProgressNote) (models.CampaignProgress, error)
+	DeleteCampaignProgressNote(campaignID, noteID string) (models.CampaignProgress, error)
 
 	// Questionnaire
 	GetQuestionnaire(campaignID string) (models.CharacterQuestionnaire, bool)

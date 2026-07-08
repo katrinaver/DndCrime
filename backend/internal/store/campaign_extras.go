@@ -201,7 +201,7 @@ func (s *MySQLStore) GetCampaignProgress(campaignID string) (models.CampaignProg
 	if errors.Is(err, sql.ErrNoRows) {
 		return models.CampaignProgress{
 			CampaignID: campaignID,
-			Milestones: []models.CampaignMilestone{},
+			Notes:      []models.CampaignProgressNote{},
 			UpdatedAt:  Now(),
 		}, false
 	}
@@ -218,6 +218,9 @@ func (s *MySQLStore) GetCampaignProgress(campaignID string) (models.CampaignProg
 		progress.UpdatedAt = updatedAt.Time
 	}
 	progress.CampaignID = campaignID
+	if progress.Notes == nil {
+		progress.Notes = []models.CampaignProgressNote{}
+	}
 	return progress, true
 }
 
@@ -225,19 +228,99 @@ func (s *MySQLStore) SaveCampaignProgress(progress models.CampaignProgress) mode
 	ctx, cancel := mysqlCtx()
 	defer cancel()
 
-	progress.UpdatedAt = Now()
-	if progress.Milestones == nil {
-		progress.Milestones = []models.CampaignMilestone{}
+	existing, found := s.GetCampaignProgress(progress.CampaignID)
+	if !found {
+		existing = models.CampaignProgress{
+			CampaignID: progress.CampaignID,
+			Notes:      []models.CampaignProgressNote{},
+		}
+	}
+	existing.CurrentChapter = progress.CurrentChapter
+	existing.UpdatedAt = Now()
+	if existing.Notes == nil {
+		existing.Notes = []models.CampaignProgressNote{}
 	}
 
 	if _, err := s.db.ExecContext(ctx, `
 		INSERT INTO campaign_progress (campaign_id, data, updated_at)
 		VALUES (?, ?, ?)
 		ON DUPLICATE KEY UPDATE data = VALUES(data), updated_at = VALUES(updated_at)
-	`, progress.CampaignID, jsonPayload(progress), progress.UpdatedAt); err != nil {
+	`, existing.CampaignID, jsonPayload(existing), existing.UpdatedAt); err != nil {
 		logMySQLError("SaveCampaignProgress", err)
 	}
-	return progress
+	return existing
+}
+
+func (s *MySQLStore) CreateCampaignProgressNote(campaignID string, note models.CampaignProgressNote) (models.CampaignProgress, error) {
+	ctx, cancel := mysqlCtx()
+	defer cancel()
+
+	progress, found := s.GetCampaignProgress(campaignID)
+	if !found {
+		progress = models.CampaignProgress{
+			CampaignID: campaignID,
+			Notes:      []models.CampaignProgressNote{},
+		}
+	}
+	if progress.Notes == nil {
+		progress.Notes = []models.CampaignProgressNote{}
+	}
+	if note.ID == "" {
+		note.ID = id.New()
+	}
+	if note.CreatedAt.IsZero() {
+		note.CreatedAt = Now()
+	}
+	progress.Notes = append([]models.CampaignProgressNote{note}, progress.Notes...)
+	progress.UpdatedAt = Now()
+
+	if _, err := s.db.ExecContext(ctx, `
+		INSERT INTO campaign_progress (campaign_id, data, updated_at)
+		VALUES (?, ?, ?)
+		ON DUPLICATE KEY UPDATE data = VALUES(data), updated_at = VALUES(updated_at)
+	`, progress.CampaignID, jsonPayload(progress), progress.UpdatedAt); err != nil {
+		logMySQLError("CreateCampaignProgressNote", err)
+		return models.CampaignProgress{}, err
+	}
+	return progress, nil
+}
+
+func (s *MySQLStore) DeleteCampaignProgressNote(campaignID, noteID string) (models.CampaignProgress, error) {
+	ctx, cancel := mysqlCtx()
+	defer cancel()
+
+	progress, found := s.GetCampaignProgress(campaignID)
+	if !found {
+		return models.CampaignProgress{}, ErrCampaignNotFound
+	}
+	if progress.Notes == nil {
+		progress.Notes = []models.CampaignProgressNote{}
+	}
+
+	next := make([]models.CampaignProgressNote, 0, len(progress.Notes))
+	foundNote := false
+	for _, note := range progress.Notes {
+		if note.ID == noteID {
+			foundNote = true
+			continue
+		}
+		next = append(next, note)
+	}
+	if !foundNote {
+		return models.CampaignProgress{}, errors.New("note not found")
+	}
+	progress.Notes = next
+	progress.UpdatedAt = Now()
+
+	if _, err := s.db.ExecContext(ctx, `
+		INSERT INTO campaign_progress (campaign_id, data, updated_at)
+		VALUES (?, ?, ?)
+		ON DUPLICATE KEY UPDATE data = VALUES(data), updated_at = VALUES(updated_at)
+	`, progress.CampaignID, jsonPayload(progress), progress.UpdatedAt); err != nil {
+		logMySQLError("DeleteCampaignProgressNote", err)
+		return models.CampaignProgress{}, err
+	}
+	return progress, nil
 }
 
 func (s *MySQLStore) JoinCampaign(campaignID, userID string) (models.Campaign, error) {

@@ -1,23 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
+import { uploadFile } from '../api/uploads'
 import { Button } from '../components/ui/Button'
+import {
+  assetActionLabel,
+  assetTypeLabels,
+  assetTypeStyles,
+  inferAssetType,
+} from '../modules/campaigns/assetUtils'
 import type { CampaignMasterContext } from '../modules/campaigns/CampaignMasterLayout'
 import type { CampaignAsset, CampaignAssetType } from '../modules/campaigns/types'
 import { useCampaignStore } from '../store/campaignStore'
-
-const assetTypeLabels: Record<CampaignAssetType, string> = {
-  map: 'Карта',
-  handout: 'Раздатка',
-  note: 'Заметка',
-  link: 'Ссылка',
-}
-
-const assetTypeStyles: Record<CampaignAssetType, string> = {
-  map: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
-  handout: 'border-blue-500/30 bg-blue-500/10 text-blue-400',
-  note: 'border-amber-500/30 bg-amber-500/10 text-amber-400',
-  link: 'border-dnd-purple/30 bg-dnd-purple/10 text-dnd-purple-hover',
-}
 
 const emptyAsset = (): Pick<CampaignAsset, 'title' | 'type' | 'description' | 'url'> => ({
   title: '',
@@ -34,10 +27,12 @@ export function CampaignMasterAssetsPage() {
   const updateCampaignAsset = useCampaignStore((s) => s.updateCampaignAsset)
   const deleteCampaignAsset = useCampaignStore((s) => s.deleteCampaignAsset)
 
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyAsset)
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -94,16 +89,61 @@ export function CampaignMasterAssetsPage() {
     }
   }
 
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files
+    if (!files?.length) return
+
+    setUploading(true)
+    setError(null)
+    try {
+      for (const file of Array.from(files)) {
+        const uploaded = await uploadFile(file, 'campaign-asset')
+        await createCampaignAsset(campaign.id, {
+          title: file.name,
+          type: inferAssetType(file),
+          description: '',
+          url: uploaded.url,
+        })
+      }
+      await fetchCampaignAssets(campaign.id)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось загрузить файл')
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h3 className="text-lg font-semibold text-white">Ассеты кампании</h3>
-          <p className="mt-1 text-sm text-dnd-muted">Карты, раздатки и материалы для игроков</p>
+          <p className="mt-1 text-sm text-dnd-muted">Карты, раздатки и файлы для игроков</p>
         </div>
-        <Button type="button" className="!w-auto" onClick={openCreate}>
-          Добавить ассет
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(e) => void handleFileUpload(e)}
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            className="!w-auto"
+            loading={uploading}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            Загрузить файл
+          </Button>
+          <Button type="button" className="!w-auto" onClick={openCreate}>
+            Добавить ассет
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -183,7 +223,7 @@ export function CampaignMasterAssetsPage() {
 
       {assets.length === 0 ? (
         <div className="rounded-xl border border-dnd-border bg-dnd-card p-8 text-center text-sm text-dnd-muted">
-          Ассеты пока не добавлены
+          Ассеты пока не добавлены. Загрузите файлы или создайте ассет вручную.
         </div>
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2">
@@ -208,9 +248,10 @@ export function CampaignMasterAssetsPage() {
                   href={asset.url}
                   target="_blank"
                   rel="noopener noreferrer"
+                  download={asset.type === 'file' ? asset.title : undefined}
                   className="mt-2 inline-block text-sm text-dnd-gold hover:underline"
                 >
-                  Открыть →
+                  {assetActionLabel(asset.type)} →
                 </a>
               )}
               <div className="mt-4 flex gap-3 text-xs">

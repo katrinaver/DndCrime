@@ -1,6 +1,6 @@
 export type CampaignStatus = 'active' | 'paused' | 'completed'
 
-export type CampaignAssetType = 'map' | 'handout' | 'note' | 'link'
+export type CampaignAssetType = 'map' | 'handout' | 'note' | 'link' | 'file'
 
 export interface CampaignAsset {
   id: string
@@ -11,6 +11,14 @@ export interface CampaignAsset {
   url?: string
   createdAt?: string
   updatedAt?: string
+}
+
+export interface CampaignProgressNote {
+  id: string
+  content: string
+  authorId: string
+  authorName: string
+  createdAt?: string
 }
 
 export interface CampaignMilestone {
@@ -24,9 +32,10 @@ export interface CampaignMilestone {
 
 export interface CampaignProgress {
   campaignId: string
-  summary: string
   currentChapter: string
-  milestones: CampaignMilestone[]
+  notes: CampaignProgressNote[]
+  summary?: string
+  milestones?: CampaignMilestone[]
   updatedAt?: string
 }
 
@@ -44,11 +53,18 @@ export interface CampaignUpdateInput {
   status: CampaignStatus
 }
 
+export interface CampaignMasterProfile {
+  name: string
+  description?: string
+  avatarUrl?: string
+}
+
 export interface Campaign {
   id: string
   name: string
   master: string
   masterId: string
+  masterProfile?: CampaignMasterProfile
   playerIds: string[]
   players: number
   place: string

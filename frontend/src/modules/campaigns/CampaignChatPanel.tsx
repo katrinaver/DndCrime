@@ -4,14 +4,18 @@ import { isRichTextEmpty, RichTextEditor } from '../../components/rich-text'
 import { useAuth } from '../../context/AuthContext'
 import { CampaignChatMessage } from './CampaignChatMessage'
 import { useChatStore } from '../../store/chatStore'
+import { useCharacterStore } from '../../store/characterStore'
 
 interface CampaignChatPanelProps {
   campaignId: string
   campaignName: string
+  masterId: string
 }
 
-export function CampaignChatPanel({ campaignId, campaignName }: CampaignChatPanelProps) {
+export function CampaignChatPanel({ campaignId, campaignName, masterId }: CampaignChatPanelProps) {
   const { user } = useAuth()
+  const character = useCharacterStore((s) => s.getCharacterByCampaignId(campaignId))
+  const fetchCharacters = useCharacterStore((s) => s.fetchCharacters)
   const messages = useChatStore((s) => s.getCampaignMessages(campaignId))
   const loading = useChatStore((s) => s.loadingByCampaign[campaignId])
   const fetchCampaignChat = useChatStore((s) => s.fetchCampaignChat)
@@ -24,7 +28,12 @@ export function CampaignChatPanel({ campaignId, campaignName }: CampaignChatPane
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const currentUserLabel = user?.email?.split('@')[0] ?? 'Вы'
+  const currentUserLabel =
+    user?.id === masterId ? 'Мастер' : (character?.name ?? user?.email?.split('@')[0] ?? 'Вы')
+
+  useEffect(() => {
+    void fetchCharacters()
+  }, [fetchCharacters])
 
   useEffect(() => {
     void fetchCampaignChat(campaignId)
@@ -86,7 +95,7 @@ export function CampaignChatPanel({ campaignId, campaignName }: CampaignChatPane
                   key={message.id}
                   message={message}
                   isOwn={isOwn}
-                  authorLabel={isOwn ? currentUserLabel : message.author}
+                  authorLabel={message.author}
                   onUpdate={(messageId, text) => updateCampaignMessage(campaignId, messageId, text)}
                   onDelete={(messageId) => deleteCampaignMessage(campaignId, messageId)}
                 />

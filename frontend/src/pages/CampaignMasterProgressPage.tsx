@@ -1,50 +1,53 @@
 import { useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
-import { CampaignProgressView } from '../modules/campaigns/CampaignProgressView'
+import { isRichTextEmpty, RichTextEditor } from '../components/rich-text'
+import { CampaignProgressNotesFeed } from '../modules/campaigns/CampaignProgressNotesFeed'
 import type { CampaignMasterContext } from '../modules/campaigns/CampaignMasterLayout'
-import type { CampaignMilestone, CampaignProgress } from '../modules/campaigns/types'
+import type { CampaignProgress } from '../modules/campaigns/types'
 import { useCampaignStore } from '../store/campaignStore'
-
-function newMilestone(order: number): CampaignMilestone {
-  return {
-    id: `ms-${Date.now()}-${order}`,
-    title: '',
-    description: '',
-    completed: false,
-    order,
-  }
-}
 
 const emptyProgress = (campaignId: string): CampaignProgress => ({
   campaignId,
-  summary: '',
   currentChapter: '',
-  milestones: [],
+  notes: [],
 })
 
 export function CampaignMasterProgressPage() {
   const { campaign } = useOutletContext<CampaignMasterContext>()
   const fetchCampaignProgress = useCampaignStore((s) => s.fetchCampaignProgress)
   const saveCampaignProgress = useCampaignStore((s) => s.saveCampaignProgress)
+  const createCampaignProgressNote = useCampaignStore((s) => s.createCampaignProgressNote)
+  const deleteCampaignProgressNote = useCampaignStore((s) => s.deleteCampaignProgressNote)
   const cached = useCampaignStore((s) => s.getCampaignProgress(campaign.id))
 
-  const [form, setForm] = useState<CampaignProgress>(() => cached ?? emptyProgress(campaign.id))
+  const [progress, setProgress] = useState<CampaignProgress>(() => cached ?? emptyProgress(campaign.id))
+  const [currentChapter, setCurrentChapter] = useState(progress.currentChapter)
+  const [noteHtml, setNoteHtml] = useState('')
+  const [editorKey, setEditorKey] = useState(0)
   const [loading, setLoading] = useState(!cached)
-  const [saving, setSaving] = useState(false)
+  const [savingChapter, setSavingChapter] = useState(false)
+  const [publishing, setPublishing] = useState(false)
+  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
-  const [preview, setPreview] = useState(false)
+  const [chapterSaved, setChapterSaved] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     void (async () => {
       setLoading(true)
       try {
-        const progress = await fetchCampaignProgress(campaign.id)
-        if (!cancelled) setForm(progress)
+        const data = await fetchCampaignProgress(campaign.id)
+        if (!cancelled) {
+          setProgress(data)
+          setCurrentChapter(data.currentChapter)
+        }
       } catch {
-        if (!cancelled) setForm(emptyProgress(campaign.id))
+        if (!cancelled) {
+          const fallback = emptyProgress(campaign.id)
+          setProgress(fallback)
+          setCurrentChapter('')
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -54,49 +57,55 @@ export function CampaignMasterProgressPage() {
     }
   }, [campaign.id, fetchCampaignProgress])
 
-  function updateMilestone(index: number, patch: Partial<CampaignMilestone>) {
-    setSaved(false)
-    setForm((prev) => ({
-      ...prev,
-      milestones: prev.milestones.map((m, i) => (i === index ? { ...m, ...patch } : m)),
-    }))
-  }
-
-  function addMilestone() {
-    setSaved(false)
-    setForm((prev) => ({
-      ...prev,
-      milestones: [...prev.milestones, newMilestone(prev.milestones.length + 1)],
-    }))
-  }
-
-  function removeMilestone(index: number) {
-    setSaved(false)
-    setForm((prev) => ({
-      ...prev,
-      milestones: prev.milestones
-        .filter((_, i) => i !== index)
-        .map((m, i) => ({ ...m, order: i + 1 })),
-    }))
-  }
-
-  async function handleSave(e: React.FormEvent) {
+  async function handleSaveChapter(e: React.FormEvent) {
     e.preventDefault()
-    setSaving(true)
+    setSavingChapter(true)
     setError(null)
-    setSaved(false)
+    setChapterSaved(false)
     try {
-      const savedProgress = await saveCampaignProgress(campaign.id, {
-        summary: form.summary,
-        currentChapter: form.currentChapter,
-        milestones: form.milestones,
-      })
-      setForm(savedProgress)
-      setSaved(true)
+      const saved = await saveCampaignProgress(campaign.id, { currentChapter })
+      setProgress(saved)
+      setChapterSaved(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось сохранить прогресс')
+      setError(err instanceof Error ? err.message : 'Не удалось сохранить главу')
     } finally {
-      setSaving(false)
+      setSavingChapter(false)
+    }
+  }
+
+  async function handlePublishNote(e: React.FormEvent) {
+    e.preventDefault()
+    if (isRichTextEmpty(noteHtml)) return
+
+    setPublishing(true)
+    setError(null)
+    try {
+      const saved = await createCampaignProgressNote(campaign.id, noteHtml)
+      setProgress(saved)
+      setNoteHtml('')
+      setEditorKey((key) => key + 1)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось опубликовать заметку')
+    } finally {
+      setPublishing(false)
+    }
+  }
+
+  async function handleDeleteNote(noteId: string) {
+    if (!window.confirm('Удалить эту заметку о прогрессе?')) return
+
+    setDeletingNoteId(noteId)
+    setError(null)
+    try {
+      await deleteCampaignProgressNote(campaign.id, noteId)
+      setProgress((prev) => ({
+        ...prev,
+        notes: prev.notes.filter((note) => note.id !== noteId),
+      }))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось удалить заметку')
+    } finally {
+      setDeletingNoteId(null)
     }
   }
 
@@ -104,31 +113,13 @@ export function CampaignMasterProgressPage() {
     return <p className="text-sm text-dnd-muted">Загрузка прогресса…</p>
   }
 
-  if (preview) {
-    return (
-      <div className="space-y-4">
-        <div className="flex justify-end">
-          <Button type="button" variant="secondary" className="!w-auto" onClick={() => setPreview(false)}>
-            Редактировать
-          </Button>
-        </div>
-        <CampaignProgressView progress={form} />
-      </div>
-    )
-  }
-
   return (
-    <form onSubmit={(e) => void handleSave(e)} className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h3 className="text-lg font-semibold text-white">Прогресс кампании</h3>
-          <p className="mt-1 text-sm text-dnd-muted">
-            Этот раздел видят и игроки в комнате кампании
-          </p>
-        </div>
-        <Button type="button" variant="secondary" className="!w-auto" onClick={() => setPreview(true)}>
-          Предпросмотр
-        </Button>
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-white">Прогресс кампании</h3>
+        <p className="mt-1 text-sm text-dnd-muted">
+          Публикуйте заметки о ходе сюжета — их видят все игроки кампании
+        </p>
       </div>
 
       {error && (
@@ -136,96 +127,68 @@ export function CampaignMasterProgressPage() {
           {error}
         </p>
       )}
-      {saved && (
-        <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400">
-          Прогресс сохранён
-        </p>
-      )}
 
-      <section className="rounded-xl border border-dnd-border bg-dnd-card p-6 space-y-4">
-        <div>
-          <label className="mb-1.5 block text-sm text-gray-300">Текущая глава</label>
+      <form
+        onSubmit={(e) => void handleSaveChapter(e)}
+        className="rounded-xl border border-dnd-border bg-dnd-card p-6"
+      >
+        <label htmlFor="currentChapter" className="mb-1.5 block text-sm text-gray-300">
+          Текущая глава
+        </label>
+        <div className="flex flex-wrap gap-3">
           <input
-            value={form.currentChapter}
+            id="currentChapter"
+            value={currentChapter}
             onChange={(e) => {
-              setSaved(false)
-              setForm((f) => ({ ...f, currentChapter: e.target.value }))
+              setChapterSaved(false)
+              setCurrentChapter(e.target.value)
             }}
             placeholder="Глава 3: Тёмный лес"
-            className="w-full rounded-lg border border-dnd-border bg-dnd-dark px-4 py-2.5 text-sm text-white outline-none focus:border-dnd-purple"
+            className="min-w-[240px] flex-1 rounded-lg border border-dnd-border bg-dnd-dark px-4 py-2.5 text-sm text-white outline-none focus:border-dnd-purple"
           />
-        </div>
-        <div>
-          <label className="mb-1.5 block text-sm text-gray-300">Краткое описание прогресса</label>
-          <textarea
-            value={form.summary}
-            onChange={(e) => {
-              setSaved(false)
-              setForm((f) => ({ ...f, summary: e.target.value }))
-            }}
-            rows={4}
-            placeholder="Что произошло в кампании, куда движется сюжет..."
-            className="w-full resize-none rounded-lg border border-dnd-border bg-dnd-dark px-4 py-2.5 text-sm text-white outline-none focus:border-dnd-purple"
-          />
-        </div>
-      </section>
-
-      <section className="rounded-xl border border-dnd-border bg-dnd-card p-6">
-        <div className="flex items-center justify-between gap-4">
-          <h4 className="text-sm font-semibold uppercase tracking-wide text-dnd-muted">Этапы</h4>
-          <Button type="button" variant="secondary" className="!w-auto" onClick={addMilestone}>
-            Добавить этап
+          <Button type="submit" className="!w-auto px-5" loading={savingChapter}>
+            Сохранить главу
           </Button>
         </div>
-
-        {form.milestones.length === 0 ? (
-          <p className="mt-4 text-sm text-dnd-muted">Этапы не заданы</p>
-        ) : (
-          <ul className="mt-4 space-y-4">
-            {form.milestones.map((milestone, index) => (
-              <li key={milestone.id} className="rounded-lg border border-dnd-border bg-dnd-dark/40 p-4">
-                <div className="flex items-start gap-3">
-                  <label className="mt-2 flex items-center gap-2 text-sm text-dnd-muted">
-                    <input
-                      type="checkbox"
-                      checked={milestone.completed}
-                      onChange={(e) => updateMilestone(index, { completed: e.target.checked })}
-                      className="rounded border-dnd-border"
-                    />
-                    Выполнено
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => removeMilestone(index)}
-                    className="ml-auto text-xs text-dnd-muted hover:text-red-400"
-                  >
-                    Удалить
-                  </button>
-                </div>
-                <input
-                  value={milestone.title}
-                  onChange={(e) => updateMilestone(index, { title: e.target.value })}
-                  placeholder="Название этапа"
-                  className="mt-3 w-full rounded-lg border border-dnd-border bg-dnd-dark px-3 py-2 text-sm text-white outline-none focus:border-dnd-purple"
-                />
-                <textarea
-                  value={milestone.description}
-                  onChange={(e) => updateMilestone(index, { description: e.target.value })}
-                  placeholder="Описание"
-                  rows={2}
-                  className="mt-2 w-full resize-none rounded-lg border border-dnd-border bg-dnd-dark px-3 py-2 text-sm text-white outline-none focus:border-dnd-purple"
-                />
-              </li>
-            ))}
-          </ul>
+        {chapterSaved && (
+          <p className="mt-3 text-sm text-emerald-400">Текущая глава сохранена</p>
         )}
-      </section>
+      </form>
 
-      <div className="flex justify-end">
-        <Button type="submit" className="!w-auto px-6" loading={saving}>
-          Сохранить прогресс
-        </Button>
-      </div>
-    </form>
+      <form
+        onSubmit={(e) => void handlePublishNote(e)}
+        className="rounded-xl border border-dnd-gold/30 bg-dnd-card p-6"
+      >
+        <h4 className="font-medium text-white">Новая заметка о прогрессе</h4>
+        <p className="mt-1 text-sm text-dnd-muted">
+          Форматирование, ссылки и вложения до 10 МБ
+        </p>
+        <div className="mt-4">
+          <RichTextEditor
+            key={editorKey}
+            placeholder="Что произошло на последней сессии, куда движется сюжет…"
+            initialContent=""
+            onChange={setNoteHtml}
+          />
+        </div>
+        <div className="mt-4 flex justify-end">
+          <Button
+            type="submit"
+            className="!w-auto px-6"
+            loading={publishing}
+            disabled={isRichTextEmpty(noteHtml)}
+          >
+            Опубликовать
+          </Button>
+        </div>
+      </form>
+
+      <CampaignProgressNotesFeed
+        progress={progress}
+        canManage
+        deletingNoteId={deletingNoteId}
+        onDeleteNote={(noteId) => void handleDeleteNote(noteId)}
+      />
+    </div>
   )
 }

@@ -10,11 +10,18 @@ const (
 	CampaignCompleted CampaignStatus = "completed"
 )
 
+type CampaignMasterProfile struct {
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	AvatarURL   string `json:"avatarUrl,omitempty"`
+}
+
 type Campaign struct {
 	ID                  string         `json:"id"`
 	Name                string         `json:"name"`
 	MasterID            string         `json:"masterId"`
 	MasterName          string         `json:"master"`
+	MasterProfile       *CampaignMasterProfile `json:"masterProfile,omitempty"`
 	PlayerIDs           []string       `json:"playerIds"`
 	Players             int            `json:"players"`
 	Place               string         `json:"place"`

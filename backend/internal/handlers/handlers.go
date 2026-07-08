@@ -12,6 +12,11 @@ type Uploader interface {
 	Upload(ctx context.Context, objectKey, contentType string, body []byte) (string, error)
 }
 
+type LocalFileProvider interface {
+	UsesLocal() bool
+	LocalFilePath(objectKey string) (string, error)
+}
+
 type Handler struct {
 	store    store.Store
 	auth     auth.Service

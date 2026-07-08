@@ -39,17 +39,17 @@ func main() {
 	defer cleanup()
 
 	authService := auth.NewService(cfg.GoogleClientID, cfg.AppJWTSecret)
-	uploader := storage.NewS3Client(storage.S3Config{
+	uploader := storage.NewCompositeUploader(storage.NewS3Client(storage.S3Config{
 		AccessKey:  cfg.S3AccessKey,
 		SecretKey:  cfg.S3SecretKey,
 		Endpoint:   cfg.S3Endpoint,
 		Bucket:     cfg.S3Bucket,
 		PublicBase: cfg.S3PublicBase,
-	})
-	if uploader.Configured() {
-		log.Println("INFO: S3 uploads enabled")
+	}), ".uploads")
+	if uploader.UsesLocal() {
+		log.Println("INFO: local file uploads enabled (.uploads/)")
 	} else {
-		log.Println("INFO: S3 uploads disabled")
+		log.Println("INFO: S3 uploads enabled")
 	}
 
 	h := handlers.New(st, authService, uploader)
@@ -67,6 +67,7 @@ func main() {
 	}))
 
 	r.Get("/api/health", h.Health)
+	r.Get("/api/uploads/files/*", h.ServeUploadedFile)
 	r.Post("/api/auth/google", h.GoogleLogin)
 
 	r.Route("/api", func(r chi.Router) {
@@ -104,6 +105,8 @@ func main() {
 				r.Delete("/assets/{assetID}", h.DeleteCampaignAsset)
 				r.Get("/progress", h.GetCampaignProgress)
 				r.Put("/progress", h.SaveCampaignProgress)
+				r.Post("/progress/notes", h.CreateCampaignProgressNote)
+				r.Delete("/progress/notes/{noteID}", h.DeleteCampaignProgressNote)
 				r.Post("/invitation", h.PublishCampaignInvitation)
 				r.Post("/join", h.JoinCampaign)
 				r.Post("/leave", h.LeaveCampaign)

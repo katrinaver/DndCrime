@@ -9,6 +9,9 @@ dist/
 backend/server
 *.tsbuildinfo
 
+# Local uploads (dev)
+.uploads/
+
 # Environment
 .env
 .env.local

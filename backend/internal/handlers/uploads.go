@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/kate/dndcrime/internal/auth"
 	"github.com/kate/dndcrime/internal/httpx"
 	"github.com/kate/dndcrime/internal/id"
@@ -70,13 +71,35 @@ func (h *Handler) UploadFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	objectKey := buildObjectKey(kind, user.ID, header.Filename, contentType)
-	url, err := h.uploader.Upload(r.Context(), objectKey, contentType, body)
+	storedKey, err := h.uploader.Upload(r.Context(), objectKey, contentType, body)
 	if err != nil {
 		httpx.WriteError(w, http.StatusBadGateway, "failed to upload file")
 		return
 	}
 
-	httpx.WriteJSON(w, http.StatusCreated, uploadResponse{URL: url, Key: objectKey})
+	publicURL := storedKey
+	if provider, ok := h.uploader.(LocalFileProvider); ok && provider.UsesLocal() {
+		publicURL = "/api/uploads/files/" + strings.TrimPrefix(storedKey, "/")
+	}
+
+	httpx.WriteJSON(w, http.StatusCreated, uploadResponse{URL: publicURL, Key: objectKey})
+}
+
+func (h *Handler) ServeUploadedFile(w http.ResponseWriter, r *http.Request) {
+	provider, ok := h.uploader.(LocalFileProvider)
+	if !ok || !provider.UsesLocal() {
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+		return
+	}
+
+	objectKey := strings.TrimPrefix(chi.URLParam(r, "*"), "/")
+	filePath, err := provider.LocalFilePath(objectKey)
+	if err != nil {
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+		return
+	}
+
+	http.ServeFile(w, r, filePath)
 }
 
 func buildObjectKey(kind, userID, filename, contentType string) string {
@@ -97,7 +120,7 @@ func uploadPrefix(kind string) string {
 	switch kind {
 	case "avatar":
 		return "avatars"
-	case "attachment":
+	case "attachment", "campaign-asset":
 		return "attachments"
 	default:
 		return "uploads"

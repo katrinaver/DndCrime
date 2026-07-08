@@ -44,8 +44,10 @@ interface CampaignState {
   fetchCampaignProgress: (campaignId: string) => Promise<CampaignProgress>
   saveCampaignProgress: (
     campaignId: string,
-    progress: Omit<CampaignProgress, 'campaignId' | 'updatedAt'>,
+    progress: Pick<CampaignProgress, 'currentChapter'>,
   ) => Promise<CampaignProgress>
+  createCampaignProgressNote: (campaignId: string, content: string) => Promise<CampaignProgress>
+  deleteCampaignProgressNote: (campaignId: string, noteId: string) => Promise<void>
   getCampaignById: (id: string) => Campaign | undefined
   getQuestionnaireConfig: (campaignId: string) => CampaignFormConfig | undefined
   getCampaignAssets: (campaignId: string) => CampaignAsset[]
@@ -206,6 +208,31 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
       progressByCampaign: { ...state.progressByCampaign, [campaignId]: saved },
     }))
     return saved
+  },
+
+  createCampaignProgressNote: async (campaignId, content) => {
+    const saved = await campaignsApi.createCampaignProgressNote(campaignId, content)
+    set((state) => ({
+      progressByCampaign: { ...state.progressByCampaign, [campaignId]: saved },
+    }))
+    return saved
+  },
+
+  deleteCampaignProgressNote: async (campaignId, noteId) => {
+    await campaignsApi.deleteCampaignProgressNote(campaignId, noteId)
+    set((state) => {
+      const current = state.progressByCampaign[campaignId]
+      if (!current) return state
+      return {
+        progressByCampaign: {
+          ...state.progressByCampaign,
+          [campaignId]: {
+            ...current,
+            notes: current.notes.filter((note) => note.id !== noteId),
+          },
+        },
+      }
+    })
   },
 
   getCampaignById: (id) => get().campaigns.find((c) => c.id === id),

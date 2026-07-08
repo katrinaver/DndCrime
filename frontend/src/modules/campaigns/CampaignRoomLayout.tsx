@@ -4,6 +4,7 @@ import { BackLink } from '../../components/BackLink'
 import { useAuth } from '../../context/AuthContext'
 import { useCharacterStore } from '../../store/characterStore'
 import { useCampaigns } from './CampaignContext'
+import { isCampaignMaster } from './utils'
 import type { CampaignStatus } from './types'
 import type { Campaign } from './types'
 import type { CharacterSheet } from '../characters/types'
@@ -45,17 +46,21 @@ function roomNavClass({ isActive }: { isActive: boolean }) {
 export function CampaignRoomLayout() {
   const { campaignId } = useParams<{ campaignId: string }>()
   const { user } = useAuth()
-  const { campaigns, userCampaignIds } = useCampaigns()
+  const { campaigns, userCampaignIds, loading } = useCampaigns()
   const getCharacterByCampaignId = useCharacterStore((s) => s.getCharacterByCampaignId)
   const fetchCharacters = useCharacterStore((s) => s.fetchCharacters)
 
   const campaign = campaigns.find((c) => c.id === campaignId)
   const character = campaignId ? getCharacterByCampaignId(campaignId) : undefined
-  const isMaster = campaign && user?.id === campaign.masterId
+  const isMaster = campaign ? isCampaignMaster(campaign, user?.id) : false
 
   useEffect(() => {
     void fetchCharacters()
   }, [fetchCharacters])
+
+  if (loading) {
+    return <p className="text-sm text-dnd-muted">Загрузка кампании…</p>
+  }
 
   if (!campaignId || !campaign || !userCampaignIds.includes(campaignId)) {
     return <Navigate to="/campaigns" replace />
@@ -70,8 +75,7 @@ export function CampaignRoomLayout() {
           <div>
             <h2 className="text-2xl font-semibold text-white">{campaign.name}</h2>
             <p className="mt-1 text-sm text-dnd-muted">
-              Мастер: {campaign.master} · {campaign.level} ур. · {campaign.players}/
-              {campaign.maxPlayers} игроков
+              {campaign.level} ур. · {campaign.players}/{campaign.maxPlayers} игроков
             </p>
           </div>
           <span
