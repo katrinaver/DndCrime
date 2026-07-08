@@ -11,3 +11,18 @@ export function getCampaignEntryPath(campaign: Campaign, userId?: string): strin
 export function isCampaignMaster(campaign: Campaign, userId?: string): boolean {
   return Boolean(userId && userId === campaign.masterId)
 }
+
+export function isCampaignMember(campaign: Campaign, userId?: string): boolean {
+  if (!userId) return false
+  return isCampaignMaster(campaign, userId) || campaign.playerIds.includes(userId)
+}
+
+/** Путь к комнате игрока (всегда, независимо от роли). */
+export function getCampaignPlayerPath(campaignId: string): string {
+  return `/campaigns/${campaignId}/menu`
+}
+
+/** Путь к панели мастера. */
+export function getCampaignMasterPath(campaignId: string): string {
+  return `/campaigns/${campaignId}/master`
+}

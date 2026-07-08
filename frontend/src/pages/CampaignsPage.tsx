@@ -4,7 +4,7 @@ import { Button } from '../components/ui/Button'
 import { useAuth } from '../context/AuthContext'
 import { useCampaigns } from '../modules/campaigns/CampaignContext'
 import type { Campaign, CampaignStatus } from '../modules/campaigns/types'
-import { getCampaignEntryPath, isCampaignMaster } from '../modules/campaigns/utils'
+import { getCampaignEntryPath, getCampaignPlayerPath, isCampaignMaster } from '../modules/campaigns/utils'
 import { useCampaignStore } from '../store/campaignStore'
 
 const statusLabels: Record<CampaignStatus, string> = {
@@ -32,7 +32,11 @@ export function CampaignsPage() {
   const myCampaigns = campaigns.filter((campaign) => userCampaignIds.includes(campaign.id))
 
   function openCampaign(campaign: Campaign) {
-    navigate(getCampaignEntryPath(campaign, user?.id))
+    navigate(
+      isCampaignMaster(campaign, user?.id)
+        ? getCampaignEntryPath(campaign, user?.id)
+        : getCampaignPlayerPath(campaign.id),
+    )
   }
 
   async function handleLeave(campaign: Campaign, e: React.MouseEvent) {

@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
+import { CampaignCreateCharacterPrompt } from '../modules/campaigns/CampaignCreateCharacterPrompt'
 import { CampaignMasterCard } from '../modules/campaigns/CampaignMasterCard'
 import { CampaignPartyMemberCard } from '../modules/campaigns/CampaignPartyMemberCard'
 import type { CampaignRoomContext } from '../modules/campaigns/CampaignRoomLayout'
@@ -94,7 +95,7 @@ export function CampaignMenuPage() {
             </Link>
           </div>
         ) : (
-          <p className="mt-4 text-sm text-dnd-muted">Персонаж ещё не создан</p>
+          <CampaignCreateCharacterPrompt campaignId={campaign.id} />
         )}
       </section>
 

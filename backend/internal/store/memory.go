@@ -79,9 +79,19 @@ func (s *MemoryStore) seed() {
 		Status: models.CampaignActive, InvitationPostID: invitePostID, CreatedAt: now, UpdatedAt: now,
 	}
 
+	campaign4 := models.Campaign{
+		ID: "4", Name: "Остров Туманов", MasterID: master1, MasterName: "Алексей",
+		PlayerIDs: []string{"user-demo"}, Players: 1, Place: "Discord",
+		Setting: "Морское приключение на затерянном острове", MaxPlayers: 4, Level: "2",
+		AntiAchievementPool: []string{"Утонул в луже на берегу"},
+		SessionDate: "2026-07-25", SessionTime: "20:00",
+		Status: models.CampaignActive, CreatedAt: now, UpdatedAt: now,
+	}
+
 	s.campaigns["1"] = campaign1
 	s.campaigns["2"] = campaign2
 	s.campaigns["3"] = campaign3
+	s.campaigns["4"] = campaign4
 
 	s.profiles["user-demo"] = models.UserProfile{
 		UserID:      "user-demo",
@@ -126,6 +136,24 @@ func (s *MemoryStore) seed() {
 		Fields: []models.QuestionnaireField{
 			{ID: "guild", Label: "Связь с гильдией", Type: models.FieldText},
 			{ID: "secret", Label: "Тайна персонажа", Type: models.FieldTextarea},
+		},
+	}
+
+	s.questionnaires["4"] = models.CharacterQuestionnaire{
+		CampaignID: "4", Title: "Анкета: Остров Туманов",
+		Description: "Морское приключение на затерянном острове.",
+		Fields: []models.QuestionnaireField{
+			{ID: "sea", Label: "Опыт на море", Type: models.FieldText},
+			{ID: "goal", Label: "Цель на острове", Type: models.FieldTextarea},
+		},
+	}
+
+	s.questionnaires["3"] = models.CharacterQuestionnaire{
+		CampaignID: "3", Title: "Анкета: Подземелье Чёрного Змея",
+		Description: "Классическое подземелье для группы искателей приключений.",
+		Fields: []models.QuestionnaireField{
+			{ID: "motivation", Label: "Зачем лезете в подземелье", Type: models.FieldTextarea},
+			{ID: "fear", Label: "Чего боитесь больше всего", Type: models.FieldText},
 		},
 	}
 
@@ -196,9 +224,13 @@ func (s *MemoryStore) seed() {
 
 	campaignChat1 := models.Chat{ID: "chat-campaign-1", Type: models.ChatTypeCampaign, CampaignID: "1", CreatedAt: now}
 	campaignChat2 := models.Chat{ID: "chat-campaign-2", Type: models.ChatTypeCampaign, CampaignID: "2", CreatedAt: now}
+	campaignChat3 := models.Chat{ID: "chat-campaign-3", Type: models.ChatTypeCampaign, CampaignID: "3", CreatedAt: now}
+	campaignChat4 := models.Chat{ID: "chat-campaign-4", Type: models.ChatTypeCampaign, CampaignID: "4", CreatedAt: now}
 	generalChat := models.Chat{ID: "chat-general", Type: models.ChatTypeGeneral, CreatedAt: now}
 	s.chats[campaignChat1.ID] = campaignChat1
 	s.chats[campaignChat2.ID] = campaignChat2
+	s.chats[campaignChat3.ID] = campaignChat3
+	s.chats[campaignChat4.ID] = campaignChat4
 	s.chats[generalChat.ID] = generalChat
 
 	s.messages[campaignChat1.ID] = []models.ChatMessage{
@@ -208,6 +240,12 @@ func (s *MemoryStore) seed() {
 	s.messages[campaignChat2.ID] = []models.ChatMessage{
 		{ID: id.New(), ChatID: campaignChat2.ID, AuthorID: master2, AuthorName: "Мастер", Text: "Встречаемся у входа в таверну.", CreatedAt: now},
 		{ID: id.New(), ChatID: campaignChat2.ID, AuthorID: "user-demo", AuthorName: "Торин Железный Кулак", Text: "Я зайду с черного хода, если что.", CreatedAt: now},
+	}
+	s.messages[campaignChat3.ID] = []models.ChatMessage{
+		{ID: id.New(), ChatID: campaignChat3.ID, AuthorID: master2, AuthorName: "Мастер", Text: "Добро пожаловать в подземелье! Создайте персонажа перед первой сессией.", CreatedAt: now},
+	}
+	s.messages[campaignChat4.ID] = []models.ChatMessage{
+		{ID: id.New(), ChatID: campaignChat4.ID, AuthorID: master1, AuthorName: "Мастер", Text: "Добро пожаловать на борт! Создайте персонажа до пятницы.", CreatedAt: now},
 	}
 	s.messages[generalChat.ID] = []models.ChatMessage{
 		{ID: id.New(), ChatID: generalChat.ID, AuthorID: "user-a", AuthorName: "Мария", Text: "Кто играет в субботу?", CreatedAt: now},

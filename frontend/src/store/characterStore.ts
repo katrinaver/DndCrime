@@ -4,6 +4,8 @@ import * as campaignsApi from '../api/campaigns'
 import { listItemFromCharacter } from '../api/mappers'
 import type { CharacterListItem, CharacterSheet, CharacterSummary } from '../modules/characters/types'
 
+const EMPTY_PARTY: CharacterSummary[] = []
+
 interface CharacterState {
   list: CharacterListItem[]
   sheets: Record<string, CharacterSheet>
@@ -99,7 +101,7 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
   getCharacterByCampaignId: (campaignId) =>
     Object.values(get().sheets).find((c) => c.campaignId === campaignId),
 
-  getPartyByCampaignId: (campaignId) => get().partyByCampaign[campaignId] ?? [],
+  getPartyByCampaignId: (campaignId) => get().partyByCampaign[campaignId] ?? EMPTY_PARTY,
 
   reset: () =>
     set({ list: [], sheets: {}, partyByCampaign: {}, loading: false, error: null }),

@@ -3,8 +3,9 @@ import { NavLink, Outlet, Navigate, useParams } from 'react-router-dom'
 import { BackLink } from '../../components/BackLink'
 import { useAuth } from '../../context/AuthContext'
 import { useCharacterStore } from '../../store/characterStore'
-import { useCampaigns } from './CampaignContext'
+import { CampaignCreateCharacterPrompt } from './CampaignCreateCharacterPrompt'
 import { isCampaignMaster } from './utils'
+import { useResolvedCampaign } from './useResolvedCampaign'
 import type { CampaignStatus } from './types'
 import type { Campaign } from './types'
 import type { CharacterSheet } from '../characters/types'
@@ -46,11 +47,10 @@ function roomNavClass({ isActive }: { isActive: boolean }) {
 export function CampaignRoomLayout() {
   const { campaignId } = useParams<{ campaignId: string }>()
   const { user } = useAuth()
-  const { campaigns, userCampaignIds, loading } = useCampaigns()
+  const { campaign, resolving, notFound } = useResolvedCampaign(campaignId, user?.id)
   const getCharacterByCampaignId = useCharacterStore((s) => s.getCharacterByCampaignId)
   const fetchCharacters = useCharacterStore((s) => s.fetchCharacters)
 
-  const campaign = campaigns.find((c) => c.id === campaignId)
   const character = campaignId ? getCharacterByCampaignId(campaignId) : undefined
   const isMaster = campaign ? isCampaignMaster(campaign, user?.id) : false
 
@@ -58,11 +58,11 @@ export function CampaignRoomLayout() {
     void fetchCharacters()
   }, [fetchCharacters])
 
-  if (loading) {
+  if (resolving) {
     return <p className="text-sm text-dnd-muted">Загрузка кампании…</p>
   }
 
-  if (!campaignId || !campaign || !userCampaignIds.includes(campaignId)) {
+  if (!campaignId || !campaign || notFound) {
     return <Navigate to="/campaigns" replace />
   }
 
@@ -104,17 +104,9 @@ export function CampaignRoomLayout() {
               {character.species} · {character.className} {character.level} ур.
             </p>
           </div>
-        ) : (
-          <div className="mt-4 rounded-xl border border-dnd-border bg-dnd-card p-4 text-sm text-dnd-muted">
-            У вас пока нет персонажа в этой кампании.{' '}
-            <NavLink
-              to={`/characters/new/campaign/${campaignId}`}
-              className="text-dnd-gold hover:underline"
-            >
-              Создать персонажа
-            </NavLink>
-          </div>
-        )}
+        ) : !isMaster ? (
+          <CampaignCreateCharacterPrompt campaignId={campaignId} compact />
+        ) : null}
       </div>
 
       <nav className="mb-6 flex flex-wrap gap-2 border-b border-dnd-border pb-4">

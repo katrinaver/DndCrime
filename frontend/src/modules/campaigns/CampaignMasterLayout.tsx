@@ -2,8 +2,8 @@ import { NavLink, Outlet, Navigate, useParams } from 'react-router-dom'
 import { BackLink } from '../../components/BackLink'
 import { useAuth } from '../../context/AuthContext'
 import { CampaignMasterInvitationBanner } from './CampaignMasterInvitationBanner'
-import { useCampaigns } from './CampaignContext'
-import { isCampaignMaster } from './utils'
+import { getCampaignPlayerPath, isCampaignMaster } from './utils'
+import { useResolvedCampaign } from './useResolvedCampaign'
 import type { Campaign, CampaignStatus } from './types'
 
 export type CampaignMasterContext = {
@@ -42,17 +42,20 @@ function masterNavClass({ isActive }: { isActive: boolean }) {
 export function CampaignMasterLayout() {
   const { campaignId } = useParams<{ campaignId: string }>()
   const { user } = useAuth()
-  const { campaigns, userCampaignIds, loading } = useCampaigns()
+  const { campaign, resolving, notFound, isMember } = useResolvedCampaign(campaignId, user?.id)
 
-  const campaign = campaigns.find((c) => c.id === campaignId)
   const isMaster = campaign ? isCampaignMaster(campaign, user?.id) : false
 
-  if (loading) {
+  if (resolving) {
     return <p className="text-sm text-dnd-muted">Загрузка кампании…</p>
   }
 
-  if (!campaignId || !campaign || !userCampaignIds.includes(campaignId) || !isMaster) {
+  if (!campaignId || !campaign || notFound || !isMember) {
     return <Navigate to="/campaigns" replace />
+  }
+
+  if (!isMaster) {
+    return <Navigate to={getCampaignPlayerPath(campaignId)} replace />
   }
 
   return (

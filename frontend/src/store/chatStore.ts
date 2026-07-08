@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import * as chatApi from '../api/chat'
 
+const EMPTY_MESSAGES: chatApi.ChatMessage[] = []
+
 interface ChatState {
   messagesByCampaign: Record<string, chatApi.ChatMessage[]>
   loadingByCampaign: Record<string, boolean>
@@ -68,7 +70,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }))
   },
 
-  getCampaignMessages: (campaignId) => get().messagesByCampaign[campaignId] ?? [],
+  getCampaignMessages: (campaignId) => get().messagesByCampaign[campaignId] ?? EMPTY_MESSAGES,
 
   reset: () => set({ messagesByCampaign: {}, loadingByCampaign: {} }),
 }))

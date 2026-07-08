@@ -8,6 +8,8 @@ import type {
   CampaignUpdateInput,
   QuestionnaireFieldSetting,
 } from '../modules/campaigns/types'
+
+const EMPTY_ASSETS: CampaignAsset[] = []
 import type { CampaignFormConfig } from '../modules/characters/types'
 import type { NewsPost } from '../modules/news/types'
 
@@ -19,6 +21,7 @@ interface CampaignState {
   loading: boolean
   error: string | null
   fetchCampaigns: () => Promise<void>
+  fetchCampaignById: (campaignId: string) => Promise<Campaign | undefined>
   fetchQuestionnaire: (campaignId: string) => Promise<CampaignFormConfig | undefined>
   createCampaign: (
     input: CampaignCreateInput,
@@ -74,6 +77,27 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
         loading: false,
         error: err instanceof Error ? err.message : 'Не удалось загрузить кампании',
       })
+    }
+  },
+
+  fetchCampaignById: async (campaignId) => {
+    const cached = get().campaigns.find((c) => c.id === campaignId)
+    if (cached) return cached
+
+    try {
+      const campaign = await campaignsApi.fetchCampaign(campaignId)
+      set((state) => {
+        const exists = state.campaigns.some((c) => c.id === campaignId)
+        return {
+          campaigns: exists
+            ? state.campaigns.map((c) => (c.id === campaignId ? campaign : c))
+            : [...state.campaigns, campaign],
+          error: null,
+        }
+      })
+      return campaign
+    } catch {
+      return undefined
     }
   },
 
@@ -239,7 +263,7 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
   getQuestionnaireConfig: (campaignId) => get().questionnaires[campaignId],
 
-  getCampaignAssets: (campaignId) => get().assetsByCampaign[campaignId] ?? [],
+  getCampaignAssets: (campaignId) => get().assetsByCampaign[campaignId] ?? EMPTY_ASSETS,
 
   getCampaignProgress: (campaignId) => get().progressByCampaign[campaignId],
 
