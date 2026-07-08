@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { BackLink } from '../components/BackLink'
 import { useCampaigns } from '../modules/campaigns/CampaignContext'
 import type { CampaignStatus } from '../modules/campaigns/types'
+import { useCharacterStore } from '../store/characterStore'
 
 const statusLabels: Record<CampaignStatus, string> = {
   active: 'Активна',
@@ -16,10 +17,17 @@ const statusStyles: Record<CampaignStatus, string> = {
 }
 
 export function CharacterCampaignSelectPage() {
-  const { campaigns, userCampaignIds } = useCampaigns()
+  const { campaigns, userCampaignIds, loading } = useCampaigns()
+  const sheets = useCharacterStore((s) => s.sheets)
+
+  const hasCharacterInCampaign = (campaignId: string) =>
+    Object.values(sheets).some((character) => character.campaignId === campaignId)
+
   const availableCampaigns = campaigns.filter(
     (campaign) =>
-      userCampaignIds.includes(campaign.id) && campaign.status !== 'completed',
+      userCampaignIds.includes(campaign.id) &&
+      campaign.status !== 'completed' &&
+      !hasCharacterInCampaign(campaign.id),
   )
 
   return (
@@ -29,13 +37,16 @@ export function CharacterCampaignSelectPage() {
       <div className="mt-4 mb-6">
         <h2 className="text-2xl font-semibold text-white">Выбор кампании</h2>
         <p className="mt-1 text-sm text-dnd-muted">
-          Выберите кампанию — откроется кастомная анкета мастера
+          Выберите кампанию — откроется анкета, которую настроил мастер
         </p>
       </div>
 
-      {availableCampaigns.length === 0 ? (
+      {loading ? (
+        <p className="text-sm text-dnd-muted">Загрузка кампаний…</p>
+      ) : availableCampaigns.length === 0 ? (
         <div className="rounded-xl border border-dnd-border bg-dnd-card p-6 text-sm text-dnd-muted">
-          Нет доступных кампаний. Попросите мастера добавить вас или создайте свою.
+          Нет кампаний без персонажа. Вступите в партию через новости или попросите мастера
+          добавить вас.
         </div>
       ) : (
         <div className="space-y-3">
@@ -48,8 +59,11 @@ export function CharacterCampaignSelectPage() {
               <div>
                 <h3 className="font-semibold text-white">{campaign.name}</h3>
                 <p className="mt-1 text-sm text-dnd-muted">
-                  Мастер: {campaign.master} · {campaign.level} ур.
+                  Мастер: {campaign.masterProfile?.name ?? campaign.master} · {campaign.level} ур.
                 </p>
+                {campaign.setting && (
+                  <p className="mt-1 line-clamp-2 text-xs text-dnd-muted">{campaign.setting}</p>
+                )}
               </div>
               <span
                 className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium ${statusStyles[campaign.status]}`}

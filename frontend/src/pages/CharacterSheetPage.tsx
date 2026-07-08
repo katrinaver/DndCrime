@@ -3,41 +3,30 @@ import { Navigate, useParams } from 'react-router-dom'
 import { BackLink } from '../components/BackLink'
 import { CharacterSheetForm } from '../modules/characters/CharacterSheetForm'
 import { QuestionnaireForm } from '../modules/characters/QuestionnaireForm'
-import { useCampaigns } from '../modules/campaigns/CampaignContext'
+import { useCampaignQuestionnaire } from '../modules/campaigns/useCampaignQuestionnaire'
 import { creationTypeLabels } from '../modules/characters/utils'
 import { GENERAL_QUESTIONNAIRE_FIELDS } from '../modules/characters/types'
 import { useCharacterStore } from '../store/characterStore'
 
 export function CharacterSheetPage() {
   const { id } = useParams<{ id: string }>()
-  const { getQuestionnaireConfig, fetchQuestionnaire } = useCampaigns()
   const character = useCharacterStore((s) => (id ? s.getCharacterById(id) : undefined))
   const loading = useCharacterStore((s) => s.loading)
   const fetchCharacter = useCharacterStore((s) => s.fetchCharacter)
+  const { config: campaignConfig } = useCampaignQuestionnaire(character?.campaignId)
 
   useEffect(() => {
     if (!id) return
     void fetchCharacter(id)
   }, [id, fetchCharacter])
 
-  useEffect(() => {
-    if (character?.campaignId) {
-      void fetchQuestionnaire(character.campaignId)
-    }
-  }, [character?.campaignId, fetchQuestionnaire])
-
   if (loading && !character) {
-    return (
-      <div className="mt-8 text-sm text-dnd-muted">Загрузка персонажа…</div>
-    )
+    return <div className="mt-8 text-sm text-dnd-muted">Загрузка персонажа…</div>
   }
 
   if (!character) {
     return <Navigate to="/characters" replace />
   }
-
-  const campaignConfig =
-    character.campaignId ? getQuestionnaireConfig(character.campaignId) : undefined
 
   return (
     <div>

@@ -1,22 +1,36 @@
 import type { CampaignFormConfig } from '../modules/characters/types'
 
+/** Dev-заглушки — в приложении анкета загружается с GET /api/campaigns/:id/questionnaire */
 export const campaignFormConfigs: CampaignFormConfig[] = [
   {
     campaignId: '1',
     title: 'Анкета: Проклятие Страда',
-    description: 'Готика, хоррор и политика Баровии. Мастер собирает персонажей под атмосферу кампании.',
+    description: 'Готика, хоррор и политика Баровии.',
     fields: [
       {
         id: 'connection',
-        label: 'Связь с Баровией или Страдом',
+        label: 'Связь с Баровией',
         type: 'textarea',
         placeholder: 'Почему ваш персонаж оказался в проклятых землях?',
       },
       {
         id: 'fear',
-        label: 'Главный страх персонажа',
+        label: 'Главный страх',
         type: 'text',
         placeholder: 'Чего боится ваш герой?',
+      },
+    ],
+  },
+  {
+    campaignId: '2',
+    title: 'Анкета: Таверна у Красного Дракона',
+    description: 'Городское приключение с интригами.',
+    fields: [
+      {
+        id: 'guild',
+        label: 'Связь с гильдией',
+        type: 'text',
+        placeholder: 'Гильдия, культ, стража, преступники...',
       },
       {
         id: 'secret',
@@ -24,61 +38,43 @@ export const campaignFormConfigs: CampaignFormConfig[] = [
         type: 'textarea',
         placeholder: 'Секрет, который может всплыть в кампании',
       },
-      {
-        id: 'ally',
-        label: 'Потенциальный союзник в партии',
-        type: 'text',
-        placeholder: 'С кем из группы персонаж может сблизиться?',
-      },
-    ],
-  },
-  {
-    campaignId: '2',
-    title: 'Анкета: Таверна у Красного Дракона',
-    description: 'Городское приключение с интригами, торговлей и социальными столкновениями.',
-    fields: [
-      {
-        id: 'tavern',
-        label: 'Отношение к таверне',
-        type: 'select',
-        options: ['Постоянный гость', 'Работник', 'Конкурент', 'Новичок в городе'],
-      },
-      {
-        id: 'faction',
-        label: 'Связь с городской фракцией',
-        type: 'text',
-        placeholder: 'Гильдия, культ, стража, преступники...',
-      },
-      {
-        id: 'goal',
-        label: 'Личная цель в городе',
-        type: 'textarea',
-        placeholder: 'Зачем персонаж здесь и чего хочет достичь?',
-      },
     ],
   },
   {
     campaignId: '3',
-    title: 'Анкета: Поход в Подгорье',
-    description: 'Классический поход в подземелье — выживание, исследование и добыча.',
+    title: 'Анкета: Подземелье Чёрного Змея',
+    description: 'Классическое подземелье для группы искателей приключений.',
     fields: [
       {
-        id: 'dungeon',
-        label: 'Опыт подземелий',
-        type: 'select',
-        options: ['Первый поход', 'Был в паре подземелий', 'Опытный исследователь'],
-      },
-      {
         id: 'motivation',
-        label: 'Мотивация для похода',
+        label: 'Зачем лезете в подземелье',
         type: 'textarea',
         placeholder: 'Золото, слава, спасение, знания?',
       },
       {
-        id: 'loadout',
-        label: 'Предпочитаемое снаряжение',
+        id: 'fear',
+        label: 'Чего боитесь больше всего',
         type: 'text',
-        placeholder: 'Факелы, верёвка, зелья...',
+        placeholder: 'Темнота, монстры, предательство...',
+      },
+    ],
+  },
+  {
+    campaignId: '4',
+    title: 'Анкета: Остров Туманов',
+    description: 'Морское приключение на затерянном острове.',
+    fields: [
+      {
+        id: 'sea',
+        label: 'Опыт на море',
+        type: 'text',
+        placeholder: 'Моряк, пассажир, первый раз на корабле...',
+      },
+      {
+        id: 'goal',
+        label: 'Цель на острове',
+        type: 'textarea',
+        placeholder: 'Зачем вы здесь и чего хотите достичь?',
       },
     ],
   },

@@ -79,10 +79,15 @@ func (h *Handler) CreateCampaign(w http.ResponseWriter, r *http.Request) {
 		Status:              models.CampaignActive,
 	}
 
+	fields := req.QuestionnaireFields
+	if len(fields) == 0 {
+		fields = buildQuestionnaireFields(req.Questionnaire)
+	}
+
 	questionnaire := models.CharacterQuestionnaire{
 		Title:       "Анкета: " + req.Name,
 		Description: req.Setting,
-		Fields:      buildQuestionnaireFields(req.Questionnaire),
+		Fields:      fields,
 	}
 
 	created := h.store.CreateCampaign(campaign, questionnaire)
@@ -554,7 +559,7 @@ func buildQuestionnaireFields(settings []models.QuestionnaireFieldSetting) []mod
 	if len(settings) == 0 {
 		return []models.QuestionnaireField{}
 	}
-	// Заглушка: позже резолвить из каталога полей листа D&D.
+	// Fallback, если клиент не передал questionnaireFields (основной путь — с фронтенда).
 	fields := make([]models.QuestionnaireField, 0, len(settings))
 	for _, s := range settings {
 		if !s.Enabled {

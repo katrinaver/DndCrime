@@ -50,6 +50,7 @@ type CreateCampaignRequest struct {
 	ExtraParams         string                      `json:"extraParams"`
 	AntiAchievementPool []string                    `json:"antiAchievementPool"`
 	Questionnaire       []QuestionnaireFieldSetting `json:"questionnaireSettings,omitempty"`
+	QuestionnaireFields []QuestionnaireField        `json:"questionnaireFields,omitempty"`
 }
 
 type UpdateCampaignRequest struct {

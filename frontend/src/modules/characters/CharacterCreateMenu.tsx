@@ -9,7 +9,7 @@ const menuItems = [
     path: '/characters/new/general',
   },
   {
-    label: 'Пройти анкету для конкретной компании',
+    label: 'Пройти анкету для конкретной кампании',
     description: 'Выбор кампании и кастомная форма мастера',
     path: '/characters/new/campaign',
   },

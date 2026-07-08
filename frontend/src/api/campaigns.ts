@@ -1,4 +1,5 @@
 import { apiFetch } from '../lib/apiClient'
+import { buildQuestionnaireFields } from '../modules/campaigns/questionnaireUtils'
 import type {
   Campaign,
   CampaignAsset,
@@ -31,6 +32,8 @@ export function createCampaign(
   questionnaireSettings: QuestionnaireFieldSetting[],
   antiAchievementPool: string[],
 ) {
+  const questionnaireFields = buildQuestionnaireFields(questionnaireSettings)
+
   return apiFetch<Campaign>('/api/campaigns', {
     method: 'POST',
     body: JSON.stringify({
@@ -44,6 +47,7 @@ export function createCampaign(
       extraParams: input.extraParams,
       antiAchievementPool,
       questionnaireSettings,
+      questionnaireFields,
     }),
   })
 }

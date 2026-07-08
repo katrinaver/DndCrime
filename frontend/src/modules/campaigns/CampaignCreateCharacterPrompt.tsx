@@ -11,12 +11,13 @@ export function CampaignCreateCharacterPrompt({
   compact = false,
 }: CampaignCreateCharacterPromptProps) {
   const createPath = `/characters/new/campaign/${campaignId}`
+  const createState = { fromCampaign: true }
 
   if (compact) {
     return (
       <div className="mt-4 rounded-xl border border-dnd-border bg-dnd-card p-4">
         <p className="text-sm text-dnd-muted">У вас пока нет персонажа в этой кампании.</p>
-        <Link to={createPath} className="mt-3 inline-block">
+        <Link to={createPath} state={createState} className="mt-3 inline-block">
           <Button type="button" className="!w-auto px-5">
             Добавить персонажа
           </Button>
@@ -31,7 +32,7 @@ export function CampaignCreateCharacterPrompt({
       <p className="mt-1 text-sm text-dnd-muted">
         Создайте героя для этой кампании, чтобы участвовать в партии и чате от его имени.
       </p>
-      <Link to={createPath} className="mt-4 inline-block">
+      <Link to={createPath} state={createState} className="mt-4 inline-block">
         <Button type="button" className="!w-auto px-6">
           Добавить персонажа
         </Button>
