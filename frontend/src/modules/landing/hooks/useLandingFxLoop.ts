@@ -5,7 +5,7 @@ import { createBeholder } from '../fx/beholder'
 import { createD20, type D20Callbacks } from '../fx/d20'
 import { createDragon } from '../fx/dragon'
 import { createEmbers } from '../fx/embers'
-import { createPortal } from '../fx/portal'
+import { createFloatDice } from '../fx/floatDice'
 import { createSkull } from '../fx/skull'
 import { createTipRotator } from '../fx/tipBurn'
 import type { FxEnv } from '../fx/types'
@@ -21,7 +21,9 @@ export interface LandingFxTargets {
   emberCanvas: RefObject<HTMLCanvasElement>
   dragonCanvas: RefObject<HTMLCanvasElement>
   beholdCanvas: RefObject<HTMLCanvasElement>
-  portalCanvas: RefObject<HTMLCanvasElement>
+  /** Обёртка артефакта и подвала — по её размеру живёт поле рун-костей */
+  floatWrap: RefObject<HTMLElement>
+  floatDiceCanvas: RefObject<HTMLCanvasElement>
   skullCanvas: RefObject<HTMLCanvasElement>
   tipText: RefObject<HTMLElement>
   tipLabel: RefObject<HTMLElement>
@@ -44,7 +46,8 @@ export function useLandingFxLoop(targets: LandingFxTargets, cb: D20Callbacks): v
     emberCanvas,
     dragonCanvas,
     beholdCanvas,
-    portalCanvas,
+    floatWrap,
+    floatDiceCanvas,
     skullCanvas,
     tipText,
     tipLabel,
@@ -65,14 +68,15 @@ export function useLandingFxLoop(targets: LandingFxTargets, cb: D20Callbacks): v
     const emberCv = emberCanvas.current
     const dragonCv = dragonCanvas.current
     const beholdCv = beholdCanvas.current
-    const portalCv = portalCanvas.current
+    const wrap = floatWrap.current
+    const floatCv = floatDiceCanvas.current
     const skullCv = skullCanvas.current
     const tText = tipText.current
     const tLabel = tipLabel.current
     const tFx = tipFx.current
     const tHost = tipHost.current
     if (
-      !hero || !dieCv || !dragonCv || !beholdCv || !portalCv || !skullCv ||
+      !hero || !dieCv || !dragonCv || !beholdCv || !wrap || !floatCv || !skullCv ||
       !tText || !tLabel || !tFx || !tHost
     ) {
       return
@@ -82,9 +86,9 @@ export function useLandingFxLoop(targets: LandingFxTargets, cb: D20Callbacks): v
     const emberCtx = emberCv?.getContext('2d') ?? null
     const dragonCtx = dragonCv.getContext('2d')
     const beholdCtx = beholdCv.getContext('2d')
-    const portalCtx = portalCv.getContext('2d')
+    const floatCtx = floatCv.getContext('2d')
     const skullCtx = skullCv.getContext('2d')
-    if (!dieCtx || !dragonCtx || !beholdCtx || !portalCtx || !skullCtx) return
+    if (!dieCtx || !dragonCtx || !beholdCtx || !floatCtx || !skullCtx) return
 
     const env: FxEnv = {
       palette: buildPalette(LANDING_ACCENT),
@@ -99,19 +103,23 @@ export function useLandingFxLoop(targets: LandingFxTargets, cb: D20Callbacks): v
     const embers = emberCv && emberCtx ? createEmbers(env) : null
     const dragon = createDragon(env)
     const beholder = createBeholder(env)
-    const portal = createPortal(env)
+    const floatDice = createFloatDice(env)
     const skull = createSkull(env)
     const tips = createTipRotator(env, TIPS)
     const tipTargets = { text: tText, label: tLabel, fx: tFx, host: tHost }
 
-    // дракон скрыт на узких экранах и CSS'ом, и здесь — чтобы не жечь CPU
+    // дракон и поле костей скрыты на узких экранах и CSS'ом, и здесь — чтобы не жечь CPU
     const dragonMq = window.matchMedia('(min-width: 880px)')
+    const diceMq = window.matchMedia('(min-width: 720px)')
 
     const ro = new ResizeObserver(() => {
       if (embers && emberCv) embers.resize(hero.clientWidth, hero.clientHeight, emberCv)
+      floatDice.resize(wrap.clientWidth, wrap.clientHeight, floatCv)
     })
     ro.observe(hero)
+    ro.observe(wrap)
     if (embers && emberCv) embers.resize(hero.clientWidth, hero.clientHeight, emberCv)
+    floatDice.resize(wrap.clientWidth, wrap.clientHeight, floatCv)
 
     let raf = 0
     let last = performance.now()
@@ -130,7 +138,7 @@ export function useLandingFxLoop(targets: LandingFxTargets, cb: D20Callbacks): v
       if (v.tip) tips.tick(tipTargets, tSec, dt)
       if (v.feat) beholder.render(beholdCtx, tSec, dt)
       if (v.art) {
-        portal.render(portalCtx, tSec, dt)
+        if (diceMq.matches) floatDice.render(floatCtx, tSec, dt)
         skull.render(skullCtx, tSec, dt)
       }
     }
@@ -143,7 +151,7 @@ export function useLandingFxLoop(targets: LandingFxTargets, cb: D20Callbacks): v
     }
   }, [
     heroSection, tipSection, featuresSection, artifactSection,
-    dieCanvas, emberCanvas, dragonCanvas, beholdCanvas, portalCanvas, skullCanvas,
+    dieCanvas, emberCanvas, dragonCanvas, beholdCanvas, floatWrap, floatDiceCanvas, skullCanvas,
     tipText, tipLabel, tipFx, tipHost,
     reducedRef, visRef,
   ])

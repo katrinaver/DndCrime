@@ -4,26 +4,18 @@ import { Link } from 'react-router-dom'
 interface ArtifactSectionProps {
   sectionRef: RefObject<HTMLElement>
   skullCanvasRef: RefObject<HTMLCanvasElement>
-  portalCanvasRef: RefObject<HTMLCanvasElement>
   appLink: string
 }
 
-export function ArtifactSection({ sectionRef, skullCanvasRef, portalCanvasRef, appLink }: ArtifactSectionProps) {
+export function ArtifactSection({ sectionRef, skullCanvasRef, appLink }: ArtifactSectionProps) {
   return (
-    <section id="artifact" ref={sectionRef} className="lp-artifact">
+    <section id="artifact" ref={sectionRef} className="lp-artifact z-[1]">
       <canvas
         ref={skullCanvasRef}
         aria-hidden="true"
         width={1040}
         height={600}
         className="pointer-events-none absolute -top-4 right-0 z-[1] h-auto w-[min(640px,80vw)] translate-x-[30%] opacity-90"
-      />
-      <canvas
-        ref={portalCanvasRef}
-        aria-hidden="true"
-        width={1040}
-        height={600}
-        className="pointer-events-none absolute -bottom-4 right-[2%] z-[1] h-auto w-[min(520px,70vw)] opacity-[0.68]"
       />
       <div className="relative z-[2] mx-auto max-w-[1220px]">
         <div className="mb-[clamp(30px,3.5vw,44px)] max-w-[720px]">

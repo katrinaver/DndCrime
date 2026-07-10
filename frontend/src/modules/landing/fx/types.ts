@@ -16,7 +16,7 @@ export interface FxEnv {
   reduced: boolean
 }
 
-/** Общий контракт фоновых созвездий (дракон/бехолдер/портал/череп) */
+/** Общий контракт фоновых созвездий (дракон/бехолдер/череп) */
 export interface Constellation {
   render(ctx: CanvasRenderingContext2D, tSec: number, dt: number): void
 }

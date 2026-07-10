@@ -50,7 +50,8 @@ export default function LandingPage() {
   const emberCanvasRef = useRef<HTMLCanvasElement>(null)
   const dragonCanvasRef = useRef<HTMLCanvasElement>(null)
   const beholdCanvasRef = useRef<HTMLCanvasElement>(null)
-  const portalCanvasRef = useRef<HTMLCanvasElement>(null)
+  const floatWrapRef = useRef<HTMLDivElement>(null)
+  const floatDiceCanvasRef = useRef<HTMLCanvasElement>(null)
   const skullCanvasRef = useRef<HTMLCanvasElement>(null)
   const glowRef = useRef<HTMLSpanElement>(null)
   const tipTextRef = useRef<HTMLSpanElement>(null)
@@ -83,7 +84,8 @@ export default function LandingPage() {
       emberCanvas: emberCanvasRef,
       dragonCanvas: dragonCanvasRef,
       beholdCanvas: beholdCanvasRef,
-      portalCanvas: portalCanvasRef,
+      floatWrap: floatWrapRef,
+      floatDiceCanvas: floatDiceCanvasRef,
       skullCanvas: skullCanvasRef,
       tipText: tipTextRef,
       tipLabel: tipLabelRef,
@@ -130,13 +132,20 @@ export default function LandingPage() {
         />
         <DiceStrip />
         <FeaturesSection sectionRef={featuresSectionRef} beholdCanvasRef={beholdCanvasRef} />
-        <ArtifactSection
-          sectionRef={artifactSectionRef}
-          skullCanvasRef={skullCanvasRef}
-          portalCanvasRef={portalCanvasRef}
-          appLink={appLink}
-        />
-        <LandingFooter appLink={appLink} />
+        {/* обёртка даёт полю рун-костей накрыть артефакт и подвал одним канвасом */}
+        <div ref={floatWrapRef} className="relative overflow-hidden bg-black/[0.12]">
+          <canvas
+            ref={floatDiceCanvasRef}
+            aria-hidden="true"
+            className="lp-float-dice pointer-events-none absolute inset-0 z-0 h-full w-full opacity-90"
+          />
+          <ArtifactSection
+            sectionRef={artifactSectionRef}
+            skullCanvasRef={skullCanvasRef}
+            appLink={appLink}
+          />
+          <LandingFooter appLink={appLink} />
+        </div>
       </div>
     </div>
   )

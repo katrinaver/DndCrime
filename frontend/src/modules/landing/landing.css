@@ -464,11 +464,11 @@
 
 /* ---------- артефакт ---------- */
 
+/* затемнение секции живёт на обёртке поля рун-костей (LandingPage) */
 .lp-artifact {
   position: relative;
   padding: clamp(52px, 6.5vw, 88px) clamp(20px, 5vw, 40px);
   border-top: 1px solid var(--lp-line);
-  background: rgba(0, 0, 0, 0.12);
   overflow: hidden;
 }
 
@@ -506,6 +506,12 @@
 
 @media (max-width: 879px) {
   .lp-dragon-canvas {
+    display: none;
+  }
+}
+
+@media (max-width: 719px) {
+  .lp-float-dice {
     display: none;
   }
 }

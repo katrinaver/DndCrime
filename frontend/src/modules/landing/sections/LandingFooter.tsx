@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 
 export function LandingFooter({ appLink }: { appLink: string }) {
   return (
-    <footer className="border-t border-(--lp-line) px-[clamp(20px,5vw,40px)] py-8">
+    <footer className="relative z-[1] border-t border-(--lp-line) px-[clamp(20px,5vw,40px)] py-8">
       <div className="lp-footer-inner mx-auto flex max-w-[1220px] flex-wrap items-center gap-[18px]">
         <div className="mr-auto flex items-center gap-[11px]">
           <span className="lp-slab grid h-7 w-7 place-items-center rounded-lg bg-[linear-gradient(160deg,var(--lp-gold-2),var(--lp-gold))] text-[15px] font-extrabold text-[#1b1712]">
