@@ -7,13 +7,15 @@ export interface Tip {
 }
 
 export interface TipTargets {
-  /** span с текстом совета — ротатор мутирует textContent/style напрямую */
+  /** span с текстом совета — ротатор мутирует textContent/style напрямую,
+   *  по нему же меряется область сжигания (host шире — растянут под самый длинный совет) */
   text: HTMLElement
   /** span с меткой «СОВЕТ МАСТЕРА №N» */
   label: HTMLElement
-  /** canvas эффекта, позиционирован left:-24px top:-24px от host */
+  /** canvas эффекта — при старте burn ротатор кладёт его left/top по
+   *  фактическому положению текста (текст центрирован в host и двигается) */
   fx: HTMLCanvasElement
-  /** обёртка текста — по ней меряется область сжигания */
+  /** обёртка-слот — positioned-родитель canvas, от неё меряется offset текста */
   host: HTMLElement
 }
 
@@ -60,12 +62,14 @@ export function createTipRotator(env: FxEnv, tips: Tip[]) {
         swap(tg)
         until = t + 7
       } else {
-        w = tg.host.offsetWidth
-        h = tg.host.offsetHeight
+        w = tg.text.offsetWidth
+        h = tg.text.offsetHeight
         tg.fx.width = (w + 48) * 2
         tg.fx.height = (h + 48) * 2
         tg.fx.style.width = `${w + 48}px`
         tg.fx.style.height = `${h + 48}px`
+        tg.fx.style.left = `${tg.text.offsetLeft - 24}px`
+        tg.fx.style.top = `${tg.text.offsetTop - 24}px`
         phase = 'burn'
         t0 = t
         parts = []
