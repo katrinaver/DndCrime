@@ -8,7 +8,7 @@
  */
 export function rollMini(
   shape: HTMLElement | null,
-  num: HTMLElement,
+  num: HTMLElement | SVGTextElement,
   max: number,
   onFinish: () => void,
 ): () => void {
@@ -29,7 +29,9 @@ export function rollMini(
     window.clearInterval(iv)
     const f = 1 + Math.floor(Math.random() * max)
     num.textContent = String(f)
-    num.style.color = f === max ? '#fff' : f === 1 ? 'var(--lp-crimson-2)' : ''
+    // svg-цифра красится через fill (инлайн перебивает fill="currentColor"),
+    // '' возвращает наследование; color — на случай html-элемента
+    num.style.fill = num.style.color = f === max ? '#fff' : f === 1 ? 'var(--lp-crimson-2)' : ''
     onFinish()
   }, 640)
   return () => {

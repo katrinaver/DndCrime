@@ -2,10 +2,10 @@ import { useEffect, useRef } from 'react'
 import { DICE } from '../data'
 import { rollMini } from '../fx/miniDice'
 
-/** Полоса «Набор искателя»: шесть кликабельных костей d4–d20 */
+/** Полоса «Набор искателя»: шесть кликабельных контурных костей d4–d20 */
 export function DiceStrip() {
   const shapeRefs = useRef<(HTMLSpanElement | null)[]>([])
-  const numRefs = useRef<(HTMLSpanElement | null)[]>([])
+  const numRefs = useRef<(SVGTextElement | null)[]>([])
   const cancelsRef = useRef(new Map<number, () => void>())
 
   useEffect(() => {
@@ -49,37 +49,77 @@ export function DiceStrip() {
                 ref={(el) => {
                   shapeRefs.current[i] = el
                 }}
-                className="relative block bg-(--lp-gold-deep)"
-                style={{
-                  width: d.size,
-                  height: d.size,
-                  clipPath: d.clip ?? undefined,
-                  borderRadius: d.radius?.outer,
-                }}
+                className="block text-(--lp-gold)"
+                style={{ width: d.size, height: d.size }}
               >
-                <span
-                  className="absolute grid place-items-center bg-[linear-gradient(160deg,#2c2418,#181310)]"
-                  style={{
-                    inset: d.inset,
-                    clipPath: d.clip ?? undefined,
-                    borderRadius: d.radius?.inner,
-                  }}
-                >
-                  <span
+                <svg viewBox="0 0 60 60" width={d.size} height={d.size}>
+                  {d.shape.kind === 'rect' ? (
+                    <rect
+                      x={d.shape.x}
+                      y={d.shape.y}
+                      width={d.shape.w}
+                      height={d.shape.h}
+                      rx={d.shape.rx}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={d.strokeWidth}
+                      opacity={d.outlineOpacity}
+                    />
+                  ) : (
+                    <polygon
+                      points={d.shape.points}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={d.strokeWidth}
+                      strokeLinejoin="round"
+                      opacity={d.outlineOpacity}
+                    />
+                  )}
+                  {d.midline && (
+                    <line
+                      x1={d.midline.x1}
+                      y1={d.midline.y1}
+                      x2={d.midline.x2}
+                      y2={d.midline.y2}
+                      stroke="currentColor"
+                      strokeWidth={0.8}
+                      opacity={0.35}
+                    />
+                  )}
+                  {d.inner && (
+                    <polygon
+                      points={d.inner}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={0.8}
+                      opacity={0.4}
+                    />
+                  )}
+                  {d.dots.map(([x, y]) => (
+                    <circle key={`${x}:${y}`} cx={x} cy={y} r={d.dotR} fill="currentColor" />
+                  ))}
+                  <text
                     ref={(el) => {
                       numRefs.current[i] = el
                     }}
-                    className="lp-slab font-bold text-(--lp-gold-2)"
-                    style={{
-                      fontSize: d.fontSize,
-                      transform: d.numShift ? `translateY(${d.numShift}px)` : undefined,
-                    }}
+                    x={30}
+                    y={d.numY}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    className="lp-slab"
+                    fontWeight={700}
+                    fontSize={d.fontSize}
+                    fill="currentColor"
                   >
                     {d.max}
-                  </span>
-                </span>
+                  </text>
+                </svg>
               </span>
-              <span className="lp-mono text-[10px] font-semibold tracking-[0.08em] text-(--lp-muted)">
+              <span
+                className={`lp-mono text-[10px] font-semibold tracking-[0.08em] ${
+                  d.max === 20 ? 'text-(--lp-gold)' : 'text-(--lp-muted)'
+                }`}
+              >
                 {d.label}
               </span>
             </button>

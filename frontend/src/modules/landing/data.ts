@@ -31,27 +31,61 @@ export const QUICK_LINKS: QuickLink[] = [
 export interface DieSpec {
   max: number
   label: string
-  /** Размер внешней фигуры, px */
+  /** Сторона svg-бокса, px (viewBox всегда 0 0 60 60) */
   size: number
-  /** clip-path фигуры; null — скруглённый квадрат (d6) */
-  clip: string | null
-  /** Отступ внутренней (тёмной) фигуры от золотого канта, px */
-  inset: number
-  /** border-radius внешней/внутренней фигуры для d6 */
-  radius?: { outer: number; inner: number }
-  /** Сдвиг цифры вниз (у треугольника d4 центр масс выше геометрического) */
-  numShift?: number
+  strokeWidth: number
+  /** Прозрачность контура; у d20 контур полностью непрозрачный */
+  outlineOpacity?: number
+  shape:
+    | { kind: 'polygon'; points: string }
+    | { kind: 'rect'; x: number; y: number; w: number; h: number; rx: number }
+  /** Горизонтальная «ось» ромбов d8/d10 */
+  midline?: { x1: number; y1: number; x2: number; y2: number }
+  /** Внутренний контур-грань d20 */
+  inner?: string
+  /** Узлы-точки в вершинах */
+  dots: Array<[number, number]>
+  dotR: number
+  /** y цифры (x всегда 30) */
+  numY: number
   fontSize: number
 }
 
-/** Полоса «Набор искателя»: параметры шести костей */
+/** Полоса «Набор искателя»: контурные кости, геометрия из прототипа */
 export const DICE: DieSpec[] = [
-  { max: 4, label: 'd4', size: 44, clip: 'polygon(50% 0, 100% 100%, 0 100%)', inset: 3, numShift: 7, fontSize: 13 },
-  { max: 6, label: 'd6', size: 41, clip: null, inset: 2, radius: { outer: 9, inner: 7 }, fontSize: 14 },
-  { max: 8, label: 'd8', size: 46, clip: 'polygon(50% 0, 100% 50%, 50% 100%, 0 50%)', inset: 2, fontSize: 14 },
-  { max: 10, label: 'd10', size: 46, clip: 'polygon(50% 0, 96% 45%, 50% 100%, 4% 45%)', inset: 2, fontSize: 13 },
-  { max: 12, label: 'd12', size: 47, clip: 'polygon(50% 2%, 98% 37%, 80% 98%, 20% 98%, 2% 37%)', inset: 2, fontSize: 14 },
-  { max: 20, label: 'd20', size: 50, clip: 'polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)', inset: 2, fontSize: 15 },
+  {
+    max: 4, label: 'd4', size: 48, strokeWidth: 1.4, outlineOpacity: 0.85,
+    shape: { kind: 'polygon', points: '30,7 53,51 7,51' },
+    dots: [[30, 7], [53, 51], [7, 51]], dotR: 1.6, numY: 40, fontSize: 15,
+  },
+  {
+    max: 6, label: 'd6', size: 48, strokeWidth: 1.4, outlineOpacity: 0.85,
+    shape: { kind: 'rect', x: 8, y: 8, w: 44, h: 44, rx: 9 },
+    dots: [[8, 8], [52, 8], [52, 52], [8, 52]], dotR: 1.6, numY: 31, fontSize: 18,
+  },
+  {
+    max: 8, label: 'd8', size: 48, strokeWidth: 1.4, outlineOpacity: 0.85,
+    shape: { kind: 'polygon', points: '30,6 54,30 30,54 6,30' },
+    midline: { x1: 6, y1: 30, x2: 54, y2: 30 },
+    dots: [[30, 6], [30, 54]], dotR: 1.6, numY: 32, fontSize: 17,
+  },
+  {
+    max: 10, label: 'd10', size: 48, strokeWidth: 1.4, outlineOpacity: 0.85,
+    shape: { kind: 'polygon', points: '30,6 52,28 30,54 8,28' },
+    midline: { x1: 8, y1: 28, x2: 52, y2: 28 },
+    dots: [[30, 6], [30, 54]], dotR: 1.6, numY: 30, fontSize: 14,
+  },
+  {
+    max: 12, label: 'd12', size: 48, strokeWidth: 1.4, outlineOpacity: 0.85,
+    shape: { kind: 'polygon', points: '30,6 54,24 45,53 15,53 6,24' },
+    dots: [[30, 6], [54, 24], [6, 24]], dotR: 1.6, numY: 33, fontSize: 14,
+  },
+  {
+    max: 20, label: 'd20', size: 54, strokeWidth: 1.5,
+    shape: { kind: 'polygon', points: '30,5 52,17 52,43 30,55 8,43 8,17' },
+    inner: '20,22 40,22 30,40',
+    dots: [[30, 5], [52, 17], [52, 43], [30, 55], [8, 43], [8, 17]], dotR: 1.7, numY: 31, fontSize: 15,
+  },
 ]
 
 export interface AbilityScore {

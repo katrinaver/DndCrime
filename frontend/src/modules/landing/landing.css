@@ -413,11 +413,12 @@
   align-items: center;
   gap: 7px;
   font-family: inherit;
-  transition: transform 0.18s ease;
+  transition: transform 0.18s ease, filter 0.18s ease;
 }
 
 .lp-die-btn:hover {
   transform: translateY(-3px);
+  filter: drop-shadow(0 0 7px var(--lp-gold));
 }
 
 /* ---------- карточки возможностей ---------- */
