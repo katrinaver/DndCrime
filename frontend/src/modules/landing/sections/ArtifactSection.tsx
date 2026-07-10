@@ -16,7 +16,7 @@ export function ArtifactSection({ sectionRef, skullCanvasRef, portalCanvasRef, a
         aria-hidden="true"
         width={1040}
         height={600}
-        className="pointer-events-none absolute -top-4 left-[-120px] z-[1] h-auto w-[min(330px,52vw)] opacity-40"
+        className="pointer-events-none absolute -top-4 right-0 z-[1] h-auto w-[min(640px,80vw)] translate-x-[30%] opacity-90"
       />
       <canvas
         ref={portalCanvasRef}
