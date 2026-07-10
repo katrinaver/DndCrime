@@ -1,0 +1,149 @@
+import { useEffect, useRef, type RefObject } from 'react'
+import { buildPalette, LANDING_ACCENT } from '../accent'
+import { TIPS } from '../data'
+import { createBeholder } from '../fx/beholder'
+import { createD20, type D20Callbacks } from '../fx/d20'
+import { createDragon } from '../fx/dragon'
+import { createEmbers } from '../fx/embers'
+import { createPortal } from '../fx/portal'
+import { createSkull } from '../fx/skull'
+import { createTipRotator } from '../fx/tipBurn'
+import type { FxEnv } from '../fx/types'
+import { usePrefersReducedMotion } from './usePrefersReducedMotion'
+import { useSectionVisibility } from './useSectionVisibility'
+
+export interface LandingFxTargets {
+  heroSection: RefObject<HTMLElement>
+  tipSection: RefObject<HTMLElement>
+  featuresSection: RefObject<HTMLElement>
+  artifactSection: RefObject<HTMLElement>
+  dieCanvas: RefObject<HTMLCanvasElement>
+  emberCanvas: RefObject<HTMLCanvasElement>
+  dragonCanvas: RefObject<HTMLCanvasElement>
+  beholdCanvas: RefObject<HTMLCanvasElement>
+  portalCanvas: RefObject<HTMLCanvasElement>
+  skullCanvas: RefObject<HTMLCanvasElement>
+  tipText: RefObject<HTMLElement>
+  tipLabel: RefObject<HTMLElement>
+  tipFx: RefObject<HTMLCanvasElement>
+  tipHost: RefObject<HTMLElement>
+}
+
+/**
+ * Единый RAF-координатор всех canvas-анимаций лендинга (порт _tick прототипа).
+ * Секция рендерится только когда видима (IntersectionObserver);
+ * dt зажат в 0.001–0.05с, поэтому возврат из фонового таба не даёт скачка.
+ */
+export function useLandingFxLoop(targets: LandingFxTargets, cb: D20Callbacks): void {
+  const {
+    heroSection,
+    tipSection,
+    featuresSection,
+    artifactSection,
+    dieCanvas,
+    emberCanvas,
+    dragonCanvas,
+    beholdCanvas,
+    portalCanvas,
+    skullCanvas,
+    tipText,
+    tipLabel,
+    tipFx,
+    tipHost,
+  } = targets
+
+  const visRef = useSectionVisibility(heroSection, tipSection, featuresSection, artifactSection)
+  const reducedRef = usePrefersReducedMotion()
+  const cbRef = useRef(cb)
+  useEffect(() => {
+    cbRef.current = cb
+  })
+
+  useEffect(() => {
+    const hero = heroSection.current
+    const dieCv = dieCanvas.current
+    const emberCv = emberCanvas.current
+    const dragonCv = dragonCanvas.current
+    const beholdCv = beholdCanvas.current
+    const portalCv = portalCanvas.current
+    const skullCv = skullCanvas.current
+    const tText = tipText.current
+    const tLabel = tipLabel.current
+    const tFx = tipFx.current
+    const tHost = tipHost.current
+    if (
+      !hero || !dieCv || !emberCv || !dragonCv || !beholdCv || !portalCv || !skullCv ||
+      !tText || !tLabel || !tFx || !tHost
+    ) {
+      return
+    }
+    const dieCtx = dieCv.getContext('2d')
+    const emberCtx = emberCv.getContext('2d')
+    const dragonCtx = dragonCv.getContext('2d')
+    const beholdCtx = beholdCv.getContext('2d')
+    const portalCtx = portalCv.getContext('2d')
+    const skullCtx = skullCv.getContext('2d')
+    if (!dieCtx || !emberCtx || !dragonCtx || !beholdCtx || !portalCtx || !skullCtx) return
+
+    const env: FxEnv = {
+      palette: buildPalette(LANDING_ACCENT),
+      reduced: reducedRef.current,
+    }
+    const d20 = createD20(env, {
+      onStatus: (text, color) => cbRef.current.onStatus(text, color),
+      onHistory: (h) => cbRef.current.onHistory(h),
+      onBurst: () => cbRef.current.onBurst(),
+    })
+    const detachDie = d20.attach(dieCv)
+    const embers = createEmbers(env)
+    const dragon = createDragon(env)
+    const beholder = createBeholder(env)
+    const portal = createPortal(env)
+    const skull = createSkull(env)
+    const tips = createTipRotator(env, TIPS)
+    const tipTargets = { text: tText, label: tLabel, fx: tFx, host: tHost }
+
+    // дракон скрыт на узких экранах и CSS'ом, и здесь — чтобы не жечь CPU
+    const dragonMq = window.matchMedia('(min-width: 880px)')
+
+    const ro = new ResizeObserver(() => {
+      embers.resize(hero.clientWidth, hero.clientHeight, emberCv)
+    })
+    ro.observe(hero)
+    embers.resize(hero.clientWidth, hero.clientHeight, emberCv)
+
+    let raf = 0
+    let last = performance.now()
+    const loop = (tMs: number) => {
+      raf = requestAnimationFrame(loop)
+      env.reduced = reducedRef.current
+      const dt = Math.min(0.05, Math.max(0.001, (tMs - last) / 1000))
+      last = tMs
+      const tSec = tMs / 1000
+      const v = visRef.current
+      if (v.hero) {
+        d20.tick(dieCtx, tMs, dt)
+        embers.render(emberCtx, tMs, dt)
+        if (dragonMq.matches) dragon.render(dragonCtx, tSec, dt)
+      }
+      if (v.tip) tips.tick(tipTargets, tSec, dt)
+      if (v.feat) beholder.render(beholdCtx, tSec, dt)
+      if (v.art) {
+        portal.render(portalCtx, tSec, dt)
+        skull.render(skullCtx, tSec, dt)
+      }
+    }
+    raf = requestAnimationFrame(loop)
+
+    return () => {
+      cancelAnimationFrame(raf)
+      ro.disconnect()
+      detachDie()
+    }
+  }, [
+    heroSection, tipSection, featuresSection, artifactSection,
+    dieCanvas, emberCanvas, dragonCanvas, beholdCanvas, portalCanvas, skullCanvas,
+    tipText, tipLabel, tipFx, tipHost,
+    reducedRef, visRef,
+  ])
+}

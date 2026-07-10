@@ -1,0 +1,589 @@
+/*
+ * Стили лендинга DndCrime. Всё scoped под .lp-root — токены и правила
+ * не пересекаются с внутренними экранами приложения (--color-dnd-*).
+ * Акцент задаётся одной переменной --lp-accent (см. accent.ts),
+ * производные золотые тона считаются через color-mix.
+ */
+
+.lp-root {
+  /* фон и поверхности */
+  --lp-bg: #14110d;
+  --lp-panel: #1b1712;
+  --lp-card: #211c15;
+  --lp-card-2: #282118;
+  /* текст */
+  --lp-ink: #efe6d4;
+  --lp-ink-dim: #c6baa2;
+  --lp-muted: #8d8168;
+  --lp-faint: #5f5844;
+  /* багрянец */
+  --lp-crimson: #a2413c;
+  --lp-crimson-2: #c05a4f;
+  /* линии */
+  --lp-line: rgba(239, 230, 212, 0.09);
+
+  /* акцент и производные (fallback-строки — для браузеров без color-mix) */
+  --lp-accent: #d8b268;
+  --lp-gold: var(--lp-accent);
+  --lp-gold-2: #eccf92;
+  --lp-gold-2: color-mix(in oklab, var(--lp-accent) 55%, #fff);
+  --lp-gold-deep: #9a7b3f;
+  --lp-gold-deep: color-mix(in oklab, var(--lp-accent) 72%, #000);
+  --lp-line-gold: rgba(216, 178, 104, 0.2);
+  --lp-line-gold: color-mix(in oklab, var(--lp-accent) 22%, transparent);
+
+  /* альфа-варианты акцента (в прототипе — литералы rgba(216,178,104,X)) */
+  --lp-gold-a02: color-mix(in srgb, var(--lp-accent) 2%, transparent);
+  --lp-gold-a05: color-mix(in srgb, var(--lp-accent) 5%, transparent);
+  --lp-gold-a07: color-mix(in srgb, var(--lp-accent) 7%, transparent);
+  --lp-gold-a08: color-mix(in srgb, var(--lp-accent) 8%, transparent);
+  --lp-gold-a10: color-mix(in srgb, var(--lp-accent) 10%, transparent);
+  --lp-gold-a12: color-mix(in srgb, var(--lp-accent) 12%, transparent);
+  --lp-gold-a13: color-mix(in srgb, var(--lp-accent) 13%, transparent);
+  --lp-gold-a16: color-mix(in srgb, var(--lp-accent) 16%, transparent);
+  --lp-gold-a20: color-mix(in srgb, var(--lp-accent) 20%, transparent);
+  --lp-gold-a24: color-mix(in srgb, var(--lp-accent) 24%, transparent);
+  --lp-gold-a28: color-mix(in srgb, var(--lp-accent) 28%, transparent);
+  --lp-gold-a30: color-mix(in srgb, var(--lp-accent) 30%, transparent);
+  --lp-gold-a45: color-mix(in srgb, var(--lp-accent) 45%, transparent);
+
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  font-family: 'Golos Text', sans-serif;
+  color: var(--lp-ink);
+  background:
+    radial-gradient(130% 78% at 50% -8%, rgba(162, 65, 60, 0.11), transparent 52%),
+    radial-gradient(90% 70% at 86% 3%, var(--lp-gold-a08), transparent 46%),
+    var(--lp-bg);
+}
+
+.lp-root ::selection {
+  background: var(--lp-gold-a30);
+  color: #fff;
+}
+
+/* плавный скролл по якорям — вешается на <html> только пока лендинг смонтирован */
+.lp-smooth {
+  scroll-behavior: smooth;
+}
+
+/* ---------- фоновые слои корня ---------- */
+
+.lp-texture {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-size: 29.44px 51px;
+  mask-image: radial-gradient(125% 92% at 50% 0%, #000 38%, transparent 92%);
+  -webkit-mask-image: radial-gradient(125% 92% at 50% 0%, #000 38%, transparent 92%);
+}
+
+.lp-noise {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url('data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22160%22%20height=%22160%22%3E%3Cfilter%20id=%22n%22%3E%3CfeTurbulence%20type=%22fractalNoise%22%20baseFrequency=%220.85%22%20numOctaves=%222%22%20stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect%20width=%22100%25%22%20height=%22100%25%22%20filter=%22url(%23n)%22/%3E%3C/svg%3E');
+}
+
+.lp-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  box-shadow: inset 0 0 200px rgba(6, 4, 2, 0.5);
+}
+
+/* ---------- keyframes ---------- */
+
+@keyframes lp-fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes lp-livePulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 var(--lp-gold-a45);
+  }
+  50% {
+    opacity: 0.5;
+    box-shadow: 0 0 0 7px transparent;
+  }
+}
+
+@keyframes lp-stampIn {
+  0% {
+    opacity: 0;
+    transform: rotate(22deg) scale(2.4);
+  }
+  65% {
+    opacity: 1;
+    transform: rotate(5deg) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(7deg) scale(1);
+  }
+}
+
+@keyframes lp-glowPulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-root *,
+  .lp-root *::before,
+  .lp-root *::after {
+    animation-duration: 0.01s !important;
+    animation-delay: 0s !important;
+  }
+}
+
+/* ---------- типографика ---------- */
+
+.lp-slab {
+  font-family: 'Zilla Slab', 'Bitter', serif;
+}
+
+.lp-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.lp-h1 {
+  margin: 0;
+  font: 700 clamp(42px, 6.4vw, 72px) / 1.02 'Zilla Slab', 'Bitter', serif;
+  letter-spacing: -0.02em;
+  color: var(--lp-ink);
+}
+
+.lp-hero-sub {
+  margin: 0;
+  font: 500 clamp(19px, 2vw, 23px) / 1.3 'Zilla Slab', 'Bitter', serif;
+  color: var(--lp-ink-dim);
+}
+
+.lp-hero-desc {
+  margin: 0;
+  max-width: 490px;
+  font: 400 clamp(15px, 1.5vw, 17px) / 1.62 'Golos Text', sans-serif;
+  color: var(--lp-ink-dim);
+}
+
+.lp-h2 {
+  margin: 15px 0 0;
+  font: 700 clamp(30px, 4.2vw, 50px) / 1.06 'Zilla Slab', 'Bitter', serif;
+  letter-spacing: -0.01em;
+  color: var(--lp-ink);
+}
+
+.lp-lead {
+  margin: 16px 0 0;
+  font: 400 clamp(15px, 1.5vw, 17px) / 1.6 'Golos Text', sans-serif;
+  color: var(--lp-ink-dim);
+}
+
+.lp-eyebrow {
+  font: 600 12px 'JetBrains Mono', monospace;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--lp-gold);
+}
+
+/* ---------- анимации появления ---------- */
+
+.lp-fade-up {
+  animation: lp-fadeUp 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.lp-fade-up-slow {
+  animation: lp-fadeUp 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.lp-stamp {
+  position: absolute;
+  top: -15px;
+  right: 20px;
+  z-index: 4;
+  transform: rotate(7deg);
+  border: 2px solid rgba(192, 90, 79, 0.55);
+  color: rgba(192, 90, 79, 0.9);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font: 700 11px 'JetBrains Mono', monospace;
+  letter-spacing: 0.16em;
+  background: rgba(162, 65, 60, 0.1);
+  animation: lp-stampIn 0.6s cubic-bezier(0.2, 0.85, 0.3, 1) 0.9s both;
+}
+
+.lp-glow {
+  position: absolute;
+  inset: 10%;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--lp-gold-a28), transparent 62%);
+  filter: blur(8px);
+  animation: lp-glowPulse 3.6s ease-in-out infinite;
+}
+
+.lp-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lp-gold);
+  animation: lp-livePulse 2.4s ease-in-out infinite;
+}
+
+/* ---------- header ---------- */
+
+.lp-header {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  backdrop-filter: saturate(140%) blur(12px);
+  -webkit-backdrop-filter: saturate(140%) blur(12px);
+  background: linear-gradient(180deg, rgba(18, 15, 11, 0.9), rgba(18, 15, 11, 0.6));
+  border-bottom: 1px solid var(--lp-line);
+}
+
+.lp-nav {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 13px clamp(20px, 5vw, 32px);
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  flex-wrap: wrap;
+}
+
+.lp-navlink {
+  font: 500 14px 'Golos Text', sans-serif;
+  color: var(--lp-ink-dim);
+}
+
+.lp-navlink:hover {
+  color: var(--lp-ink);
+}
+
+.lp-logo-badge {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(160deg, var(--lp-gold-2), var(--lp-gold));
+  color: #1b1712;
+  font: 800 16px 'Zilla Slab', 'Bitter', serif;
+  box-shadow: 0 3px 10px var(--lp-gold-a28), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+/* ---------- золотые CTA ---------- */
+
+.lp-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(180deg, var(--lp-gold-2), var(--lp-gold));
+  color: #1b1712;
+  font: 600 14px 'Golos Text', sans-serif;
+  padding: 9px 15px;
+  border-radius: 10px;
+  border: 1px solid var(--lp-gold-deep);
+  box-shadow: 0 5px 16px var(--lp-gold-a20), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.lp-cta:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+  color: #1b1712;
+}
+
+.lp-cta-lg {
+  gap: 9px;
+  font: 600 16px 'Golos Text', sans-serif;
+  padding: 13px 22px;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px var(--lp-gold-a24), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.lp-cta-lg:hover {
+  transform: translateY(-2px);
+}
+
+/* ---------- hero ---------- */
+
+.lp-hero {
+  position: relative;
+  padding: clamp(56px, 7vw, 92px) clamp(20px, 5vw, 40px) clamp(48px, 6vw, 72px);
+}
+
+.lp-die-canvas {
+  position: absolute;
+  left: -40px;
+  top: -40px;
+  z-index: 1;
+  width: 220px;
+  height: 220px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  outline: none;
+}
+
+.lp-die-canvas:focus-visible {
+  outline: 2px solid var(--lp-line-gold);
+  outline-offset: 6px;
+  border-radius: 50%;
+}
+
+/* сетка «Быстрые переходы» */
+.lp-quick {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 11px;
+  border-radius: 10px;
+  background: var(--lp-card);
+  border: 1px solid var(--lp-line);
+}
+
+.lp-quick:hover {
+  border-color: var(--lp-line-gold);
+  background: var(--lp-card-2);
+  transform: translateY(-2px);
+}
+
+/* placeholder-заливки (диагональная штриховка) */
+.lp-hatch {
+  background: repeating-linear-gradient(45deg, #2a241b 0 6px, #221d16 6px 12px);
+}
+
+.lp-hatch-sm {
+  background: repeating-linear-gradient(45deg, #2a241b 0 5px, #221d16 5px 10px);
+}
+
+/* стеки аватаров */
+.lp-av {
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #1b1712;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+}
+
+.lp-av-gold {
+  background: linear-gradient(160deg, var(--lp-gold), var(--lp-gold-deep));
+}
+
+.lp-av-crimson {
+  background: linear-gradient(160deg, var(--lp-crimson-2), #7d332f);
+}
+
+.lp-av-slate {
+  background: linear-gradient(160deg, #7f9aa0, #4e6469);
+}
+
+/* ---------- полоса кубиков ---------- */
+
+.lp-die-btn {
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  font-family: inherit;
+  transition: transform 0.18s ease;
+}
+
+.lp-die-btn:hover {
+  transform: translateY(-3px);
+}
+
+/* ---------- карточки возможностей ---------- */
+
+.lp-feature-card {
+  padding: 20px;
+  border-radius: 15px;
+  background: var(--lp-card);
+  border: 1px solid var(--lp-line);
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.lp-feature-card:hover {
+  border-color: var(--lp-line-gold);
+  transform: translateY(-3px);
+  box-shadow: 0 24px 50px -28px rgba(0, 0, 0, 0.7);
+}
+
+.lp-feature-chip {
+  font: 600 10px 'JetBrains Mono', monospace;
+  letter-spacing: 0.14em;
+  color: var(--lp-gold);
+  border: 1px solid var(--lp-line-gold);
+  border-radius: 6px;
+  padding: 5px 8px;
+  background: var(--lp-gold-a07);
+}
+
+.lp-features {
+  position: relative;
+  padding: clamp(48px, 6vw, 80px) clamp(20px, 5vw, 40px) clamp(64px, 8vw, 100px);
+  border-top: 1px solid var(--lp-line);
+  overflow: hidden;
+}
+
+.lp-features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(310px, 100%), 1fr));
+  gap: 18px;
+}
+
+/* ---------- артефакт ---------- */
+
+.lp-artifact {
+  position: relative;
+  padding: clamp(52px, 6.5vw, 88px) clamp(20px, 5vw, 40px);
+  border-top: 1px solid var(--lp-line);
+  background: rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.lp-artifact-card {
+  position: relative;
+  border-radius: 14px;
+  padding: clamp(22px, 3vw, 32px);
+  background: linear-gradient(170deg, #231c13, #181310);
+  border: 1px solid var(--lp-line-gold);
+  outline: 1px solid var(--lp-gold-a13);
+  outline-offset: 6px;
+  box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.8);
+}
+
+.lp-artifact-cta-title {
+  margin: 0;
+  font: 700 clamp(28px, 3.6vw, 44px) / 1.08 'Zilla Slab', 'Bitter', serif;
+  letter-spacing: -0.01em;
+  color: var(--lp-ink);
+}
+
+.lp-divider-right {
+  height: 2px;
+  margin: 17px 0;
+  background: linear-gradient(90deg, var(--lp-gold-deep), var(--lp-gold-a05));
+}
+
+.lp-divider-left {
+  height: 2px;
+  margin: 17px 0;
+  background: linear-gradient(90deg, var(--lp-gold-a05), var(--lp-gold-deep));
+}
+
+/* ---------- адаптив ---------- */
+
+@media (max-width: 879px) {
+  .lp-dragon-canvas {
+    display: none;
+  }
+}
+
+@media (max-width: 639px) {
+  .lp-nav {
+    gap: 12px 16px;
+    padding-top: 11px;
+    padding-bottom: 11px;
+  }
+
+  /* хедер в две строки: лого + CTA, ниже — ссылки */
+  .lp-nav-links {
+    order: 3;
+    flex-basis: 100%;
+    justify-content: flex-start;
+  }
+
+  .lp-hero {
+    padding-top: 44px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .lp-die-status {
+    max-width: none;
+    flex: 1 1 160px;
+  }
+
+  .lp-quick-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .lp-session-card {
+    flex-wrap: wrap;
+  }
+
+  .lp-session-pill {
+    margin-left: 0;
+  }
+
+  .lp-stamp {
+    right: 12px;
+  }
+
+  .lp-dice-label {
+    flex-basis: 100%;
+    margin-right: 0;
+  }
+
+  .lp-dice-row {
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .lp-features,
+  .lp-artifact {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .lp-behold-canvas {
+    opacity: 0.5;
+    right: -80px;
+  }
+
+  .lp-artifact-card {
+    outline-offset: 4px;
+  }
+
+  .lp-artifact-col {
+    flex-basis: 100%;
+  }
+
+  .lp-footer-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}

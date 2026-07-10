@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from './components/AppLayout'
 import { DevAuthBanner } from './components/DevAuthBanner'
@@ -26,7 +27,6 @@ import { CharacterSheetPage } from './pages/CharacterSheetPage'
 import { CharactersPage } from './pages/CharactersPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { HomePage } from './pages/HomePage'
-import { LandingPage } from './pages/LandingPage'
 import { LoginPage } from './pages/LoginPage'
 import { NewsPage } from './pages/NewsPage'
 import { NotesPage } from './pages/NotesPage'
@@ -34,6 +34,9 @@ import { ProfilePage } from './pages/ProfilePage'
 import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { TermsOfServicePage } from './pages/TermsOfServicePage'
+
+// Лендинг тянет canvas-анимации и собственные шрифты — грузим отдельным чанком
+const LandingPage = lazy(() => import('./modules/landing/LandingPage'))
 
 function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -56,7 +59,14 @@ function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<LandingPage />} />
+      <Route
+        path="/"
+        element={
+          <Suspense fallback={<div className="min-h-screen" style={{ background: '#14110d' }} />}>
+            <LandingPage />
+          </Suspense>
+        }
+      />
       <Route
         path="/login"
         element={
