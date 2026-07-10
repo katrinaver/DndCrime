@@ -72,18 +72,19 @@ export function useLandingFxLoop(targets: LandingFxTargets, cb: D20Callbacks): v
     const tFx = tipFx.current
     const tHost = tipHost.current
     if (
-      !hero || !dieCv || !emberCv || !dragonCv || !beholdCv || !portalCv || !skullCv ||
+      !hero || !dieCv || !dragonCv || !beholdCv || !portalCv || !skullCv ||
       !tText || !tLabel || !tFx || !tHost
     ) {
       return
     }
     const dieCtx = dieCv.getContext('2d')
-    const emberCtx = emberCv.getContext('2d')
+    // ember-канвас опционален: при LANDING_EMBERS=false его нет в DOM
+    const emberCtx = emberCv?.getContext('2d') ?? null
     const dragonCtx = dragonCv.getContext('2d')
     const beholdCtx = beholdCv.getContext('2d')
     const portalCtx = portalCv.getContext('2d')
     const skullCtx = skullCv.getContext('2d')
-    if (!dieCtx || !emberCtx || !dragonCtx || !beholdCtx || !portalCtx || !skullCtx) return
+    if (!dieCtx || !dragonCtx || !beholdCtx || !portalCtx || !skullCtx) return
 
     const env: FxEnv = {
       palette: buildPalette(LANDING_ACCENT),
@@ -95,7 +96,7 @@ export function useLandingFxLoop(targets: LandingFxTargets, cb: D20Callbacks): v
       onBurst: () => cbRef.current.onBurst(),
     })
     const detachDie = d20.attach(dieCv)
-    const embers = createEmbers(env)
+    const embers = emberCv && emberCtx ? createEmbers(env) : null
     const dragon = createDragon(env)
     const beholder = createBeholder(env)
     const portal = createPortal(env)
@@ -107,10 +108,10 @@ export function useLandingFxLoop(targets: LandingFxTargets, cb: D20Callbacks): v
     const dragonMq = window.matchMedia('(min-width: 880px)')
 
     const ro = new ResizeObserver(() => {
-      embers.resize(hero.clientWidth, hero.clientHeight, emberCv)
+      if (embers && emberCv) embers.resize(hero.clientWidth, hero.clientHeight, emberCv)
     })
     ro.observe(hero)
-    embers.resize(hero.clientWidth, hero.clientHeight, emberCv)
+    if (embers && emberCv) embers.resize(hero.clientWidth, hero.clientHeight, emberCv)
 
     let raf = 0
     let last = performance.now()
@@ -123,7 +124,7 @@ export function useLandingFxLoop(targets: LandingFxTargets, cb: D20Callbacks): v
       const v = visRef.current
       if (v.hero) {
         d20.tick(dieCtx, tMs, dt)
-        embers.render(emberCtx, tMs, dt)
+        if (embers && emberCtx) embers.render(emberCtx, tMs, dt)
         if (dragonMq.matches) dragon.render(dragonCtx, tSec, dt)
       }
       if (v.tip) tips.tick(tipTargets, tSec, dt)

@@ -1,4 +1,5 @@
 import type { RefObject } from 'react'
+import { LANDING_EMBERS } from '../accent'
 import { HeroPanel } from './HeroPanel'
 
 export interface DieStatus {
@@ -28,13 +29,15 @@ export function HeroSection({
 }: HeroSectionProps) {
   return (
     <section id="top" ref={sectionRef} className="lp-hero">
-      <canvas
-        ref={emberCanvasRef}
-        aria-hidden="true"
-        width={300}
-        height={200}
-        className="pointer-events-none absolute inset-0 h-full w-full"
-      />
+      {LANDING_EMBERS && (
+        <canvas
+          ref={emberCanvasRef}
+          aria-hidden="true"
+          width={300}
+          height={200}
+          className="pointer-events-none absolute inset-0 h-full w-full"
+        />
+      )}
       <canvas
         ref={dragonCanvasRef}
         aria-hidden="true"

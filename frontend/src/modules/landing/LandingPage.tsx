@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../context/AuthContext'
-import { buildHexTextureDataUri, buildPalette, LANDING_ACCENT } from './accent'
+import { buildPalette, buildTextureStyle, LANDING_ACCENT, LANDING_TEXTURE } from './accent'
 import { INITIAL_DIE_STATUS } from './data'
 import { useLandingFxLoop } from './hooks/useLandingFxLoop'
 import { ArtifactSection } from './sections/ArtifactSection'
@@ -99,11 +99,14 @@ export default function LandingPage() {
     return () => document.documentElement.classList.remove('lp-smooth')
   }, [])
 
-  const hexTexture = useMemo(() => buildHexTextureDataUri(buildPalette(LANDING_ACCENT).ac), [])
+  const textureStyle = useMemo(
+    () => buildTextureStyle(LANDING_TEXTURE, buildPalette(LANDING_ACCENT).ac),
+    [],
+  )
 
   return (
     <div className="lp-root" style={{ '--lp-accent': LANDING_ACCENT } as CSSProperties}>
-      <div className="lp-texture" aria-hidden="true" style={{ backgroundImage: hexTexture }} />
+      <div className="lp-texture" aria-hidden="true" style={textureStyle} />
       <div className="lp-noise" aria-hidden="true" />
       <div className="lp-vignette" aria-hidden="true" />
 
