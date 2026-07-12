@@ -149,6 +149,29 @@ VITE_DEV_AUTH_ALLOW_BUILD=false
 4. Keep backend private inside the compose/network where possible; frontend nginx proxies `/api/` to backend.
 5. Configure MySQL backups.
 
+## PR staging and visual diffs
+
+Pull requests to `main` deploy to `https://dnd-crime-staging.gistrec.cloud`.
+Before each deploy, the server refreshes the isolated `dnd-crime-staging` MySQL
+database from a transaction-consistent production dump. Production is only read;
+the PR backend starts against the staging copy.
+
+The visual-diff job signs in as the configured test account, discovers dynamic
+campaign/character routes through the API, and captures every public and protected
+route in desktop and mobile viewports. Slider HTML, baseline/current PNGs, and red
+pixel diffs are uploaded publicly under `visual-diffs/app/pr-<N>/<sha>/`. A bucket
+lifecycle rule removes everything below `visual-diffs/` after 30 days.
+
+Required GitHub Actions secrets:
+
+- `STAGING_DEPLOY_KEY` — rrsync-only write access to `DndCrimeStaging`;
+- `STAGING_CONTROL_KEY` — may only invoke the fixed staging refresh/restart command;
+- `VISUAL_TEST_AUTH_TOKEN` — short-lived app JWT for the snapshot account;
+- `YC_S3_ACCESS_KEY_ID` and `YC_S3_SECRET_ACCESS_KEY`.
+
+Rotate `VISUAL_TEST_AUTH_TOKEN` before its expiry and never use the unrestricted
+VPS SSH key in Actions.
+
 ## Routes
 
 | Path               | Page            | Access    |
