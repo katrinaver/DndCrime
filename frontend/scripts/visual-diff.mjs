@@ -62,6 +62,14 @@ async function capture(browser, base, route, auth, viewport, path) {
   await page.clock.pauseAt(new Date(start.getTime() + 1))
   await page.goto(`${base}${route}`, { waitUntil: 'domcontentloaded', timeout: 30_000 })
   await page.evaluate(() => document.fonts.ready)
+  // Let the SPA finish its auth (/api/me) and per-page API fetches before shooting.
+  // networkidle is driven by the browser network stack, so the paused clock doesn't stall it.
+  await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {})
+  // Belt-and-suspenders: the auth/page loaders render `.animate-spin`; drive the frozen
+  // clock forward until they clear so we never capture the spinner.
+  for (let i = 0; i < 30 && (await page.locator('.animate-spin').count()) > 0; i++) {
+    await page.clock.runFor(200)
+  }
   await page.addStyleTag({ content: '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}iframe[src*="accounts.google"]{visibility:hidden!important}' })
   await page.clock.runFor(1000)
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))

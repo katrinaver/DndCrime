@@ -1,0 +1,86 @@
+# Прод-приложение: https://dnd-crime.gistrec.cloud/
+# Триггер — пуш в main (обычно merge PR). Собираем фронт+бэк в CI, заливаем на prod
+# и рестартим backend. PROD_DEPLOY_KEY ограничен на VM через rrsync (джейл ~/DndCrime,
+# -wo, restrict) — rsync пишет только внутрь ~/DndCrime, наружу (в т.ч. в ~) выхода нет.
+# PROD_CONTROL_KEY — forced-команда deploy/prod-control.sh (только рестарт dnd-crime-api,
+# без refresh БД: prod и есть источник данных). Во всех ssh/rsync обязательно
+# ControlPath=none и конкретный подкаталог назначения, НИКОГДА dest /.
+name: prod-deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: dndcrime-prod
+  # Не прерываем rsync/рестарт посреди обновления живого прода.
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+      - name: Build frontend
+        working-directory: frontend
+        run: yarn install --frozen-lockfile && yarn build
+        env:
+          VITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Test and build backend
+        working-directory: backend
+        run: |
+          go test ./...
+          CGO_ENABLED=0 go build -o server ./cmd/server
+      - name: Configure restricted SSH keys
+        env:
+          DEPLOY_KEY: ${{ secrets.PROD_DEPLOY_KEY }}
+          CONTROL_KEY: ${{ secrets.PROD_CONTROL_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          printf '%s\n' "$CONTROL_KEY" > ~/.ssh/control_key
+          chmod 600 ~/.ssh/deploy_key ~/.ssh/control_key
+          echo 'germany.vps.gistrec.cloud ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJIy14M39XFKTzrbhuOaMw1Hragd2sXlrKN3VjMOwg4h' > ~/.ssh/known_hosts
+      - name: Upload prod artifacts
+        # Фронт: новые файлы сначала полностью передаются во временные пути, устаревшие
+        # удаляются только после применения обновлений (--delay-updates/--delete-delay).
+        run: |
+          RSYNC_SSH="ssh -i ~/.ssh/deploy_key -o ControlPath=none"
+          rsync -az --delay-updates --delete-delay -e "$RSYNC_SSH" frontend/dist/ gistrec@germany.vps.gistrec.cloud:frontend/dist/
+          rsync -az -e "$RSYNC_SSH" backend/server gistrec@germany.vps.gistrec.cloud:backend/server
+      - name: Restart prod backend
+        run: ssh -i ~/.ssh/control_key -o ControlPath=none gistrec@germany.vps.gistrec.cloud deploy
+      - name: Добавить ссылку на prod в смерженный PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pulls } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              ...context.repo,
+              commit_sha: context.sha,
+            });
+            const pull = pulls.find(pr => pr.merged_at && pr.base.ref === 'main');
+
+            if (!pull) {
+              core.info(`Для коммита ${context.sha} не найден смерженный PR — комментарий не нужен.`);
+              return;
+            }
+
+            await github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: pull.number,
+              body: '🚀 Приложение залито на production: https://dnd-crime.gistrec.cloud/',
+            });
