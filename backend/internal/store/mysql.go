@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -232,6 +233,39 @@ func (s *MySQLStore) SaveProfile(profile models.UserProfile) models.UserProfile 
 	return profile
 }
 
+func (s *MySQLStore) EnsureProfile(profile models.UserProfile) (models.UserProfile, error) {
+	ctx, cancel := mysqlCtx()
+	defer cancel()
+
+	profile.UpdatedAt = Now()
+	if _, err := s.db.ExecContext(ctx, `
+		INSERT INTO profiles (user_id, email, name, description, avatar_url, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?)
+		ON DUPLICATE KEY UPDATE user_id = user_id
+	`, profile.UserID, profile.Email, profile.Name, profile.Description, profile.AvatarURL, profile.UpdatedAt); err != nil {
+		logMySQLError("EnsureProfile insert", err)
+		return models.UserProfile{}, err
+	}
+
+	var stored models.UserProfile
+	if err := s.db.QueryRowContext(ctx, `
+		SELECT user_id, email, name, description, avatar_url, updated_at
+		FROM profiles
+		WHERE user_id = ?
+	`, profile.UserID).Scan(
+		&stored.UserID,
+		&stored.Email,
+		&stored.Name,
+		&stored.Description,
+		&stored.AvatarURL,
+		&stored.UpdatedAt,
+	); err != nil {
+		logMySQLError("EnsureProfile select", err)
+		return models.UserProfile{}, err
+	}
+	return stored, nil
+}
+
 func (s *MySQLStore) GetNote(userID string) (models.Note, bool) {
 	ctx, cancel := mysqlCtx()
 	defer cancel()
@@ -319,14 +353,14 @@ func (s *MySQLStore) GetCampaign(campaignID string) (models.Campaign, bool) {
 	return campaign, true
 }
 
-func (s *MySQLStore) CreateCampaign(campaign models.Campaign, questionnaire models.CharacterQuestionnaire) models.Campaign {
+func (s *MySQLStore) CreateCampaign(campaign models.Campaign, questionnaire models.CharacterQuestionnaire) (models.Campaign, error) {
 	ctx, cancel := mysqlCtx()
 	defer cancel()
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		logMySQLError("CreateCampaign begin", err)
-		return models.Campaign{}
+		return models.Campaign{}, fmt.Errorf("create campaign: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -343,18 +377,18 @@ func (s *MySQLStore) CreateCampaign(campaign models.Campaign, questionnaire mode
 		VALUES (?, ?, ?, ?, ?, ?)
 	`, campaign.ID, campaign.MasterID, campaign.Name, jsonPayload(campaign), campaign.CreatedAt, campaign.UpdatedAt); err != nil {
 		logMySQLError("CreateCampaign campaign", err)
-		return models.Campaign{}
+		return models.Campaign{}, fmt.Errorf("create campaign: %w", err)
 	}
 
 	for _, userID := range uniqueIDs(campaign.PlayerIDs) {
 		if err := insertCampaignMember(ctx, tx, campaign.ID, userID, "player"); err != nil {
 			logMySQLError("CreateCampaign player", err)
-			return models.Campaign{}
+			return models.Campaign{}, fmt.Errorf("create campaign: %w", err)
 		}
 	}
 	if err := insertCampaignMember(ctx, tx, campaign.ID, campaign.MasterID, "master"); err != nil {
 		logMySQLError("CreateCampaign master", err)
-		return models.Campaign{}
+		return models.Campaign{}, fmt.Errorf("create campaign: %w", err)
 	}
 
 	questionnaire.CampaignID = campaign.ID
@@ -363,7 +397,7 @@ func (s *MySQLStore) CreateCampaign(campaign models.Campaign, questionnaire mode
 		VALUES (?, ?, ?)
 	`, campaign.ID, jsonPayload(questionnaire), now); err != nil {
 		logMySQLError("CreateCampaign questionnaire", err)
-		return models.Campaign{}
+		return models.Campaign{}, fmt.Errorf("create campaign: %w", err)
 	}
 
 	chat := models.Chat{ID: id.New(), Type: models.ChatTypeCampaign, CampaignID: campaign.ID, CreatedAt: now}
@@ -372,17 +406,17 @@ func (s *MySQLStore) CreateCampaign(campaign models.Campaign, questionnaire mode
 		VALUES (?, ?, ?, ?)
 	`, chat.ID, chat.Type, chat.CampaignID, chat.CreatedAt); err != nil {
 		logMySQLError("CreateCampaign chat", err)
-		return models.Campaign{}
+		return models.Campaign{}, fmt.Errorf("create campaign: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
 		logMySQLError("CreateCampaign commit", err)
-		return models.Campaign{}
+		return models.Campaign{}, fmt.Errorf("create campaign: %w", err)
 	}
-	return campaign
+	return campaign, nil
 }
 
-func (s *MySQLStore) IsCampaignMember(campaignID, userID string) bool {
+func (s *MySQLStore) IsCampaignMember(campaignID, userID string) (bool, error) {
 	ctx, cancel := mysqlCtx()
 	defer cancel()
 
@@ -394,11 +428,14 @@ func (s *MySQLStore) IsCampaignMember(campaignID, userID string) bool {
 		WHERE c.id = ? AND (c.master_id = ? OR cm.user_id IS NOT NULL)
 		LIMIT 1
 	`, userID, campaignID, userID).Scan(&found)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
 	if err != nil {
 		logMySQLError("IsCampaignMember", err)
-		return false
+		return false, err
 	}
-	return found == 1
+	return found == 1, nil
 }
 
 func (s *MySQLStore) GetQuestionnaire(campaignID string) (models.CharacterQuestionnaire, bool) {
@@ -485,6 +522,18 @@ func (s *MySQLStore) GetCharacter(characterID string) (models.Character, bool) {
 	return character, true
 }
 
+// getCharacterForUpdateTx читает персонажа с блокировкой строки (FOR UPDATE),
+// чтобы read-modify-write листа/ачивок не терял конкурентные изменения
+// (владелец и мастер могут менять одного персонажа одновременно).
+func getCharacterForUpdateTx(ctx context.Context, tx *sql.Tx, characterID string) (models.Character, error) {
+	return scanPayload[models.Character](tx.QueryRowContext(ctx, `
+		SELECT data
+		FROM characters
+		WHERE id = ?
+		FOR UPDATE
+	`, characterID))
+}
+
 func (s *MySQLStore) CreateCharacter(c models.Character) models.Character {
 	ctx, cancel := mysqlCtx()
 	defer cancel()
@@ -505,14 +554,21 @@ func (s *MySQLStore) UpdateCharacter(c models.Character) (models.Character, bool
 	ctx, cancel := mysqlCtx()
 	defer cancel()
 
-	existing, found := s.GetCharacter(c.ID)
-	if !found || existing.OwnerID != c.OwnerID {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		logMySQLError("UpdateCharacter begin", err)
+		return models.Character{}, false
+	}
+	defer tx.Rollback()
+
+	existing, err := getCharacterForUpdateTx(ctx, tx, c.ID)
+	if err != nil || existing.OwnerID != c.OwnerID {
 		return models.Character{}, false
 	}
 	c.CreatedAt = existing.CreatedAt
 	c.UpdatedAt = Now()
 
-	res, err := s.db.ExecContext(ctx, `
+	res, err := tx.ExecContext(ctx, `
 		UPDATE characters
 		SET owner_id = ?, campaign_id = ?, data = ?, updated_at = ?
 		WHERE id = ? AND owner_id = ?
@@ -523,6 +579,10 @@ func (s *MySQLStore) UpdateCharacter(c models.Character) (models.Character, bool
 	}
 	affected, _ := res.RowsAffected()
 	if affected == 0 {
+		return models.Character{}, false
+	}
+	if err := tx.Commit(); err != nil {
+		logMySQLError("UpdateCharacter commit", err)
 		return models.Character{}, false
 	}
 	return c, true
@@ -545,8 +605,18 @@ func (s *MySQLStore) DeleteCharacter(characterID, ownerID string) bool {
 }
 
 func (s *MySQLStore) AddCharacterAchievement(characterID, ownerID string, achievement models.AntiAchievement) (models.Character, bool) {
-	character, found := s.GetCharacter(characterID)
-	if !found || character.OwnerID != ownerID {
+	ctx, cancel := mysqlCtx()
+	defer cancel()
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		logMySQLError("AddCharacterAchievement begin", err)
+		return models.Character{}, false
+	}
+	defer tx.Rollback()
+
+	character, err := getCharacterForUpdateTx(ctx, tx, characterID)
+	if err != nil || character.OwnerID != ownerID {
 		return models.Character{}, false
 	}
 	achievement.ID = id.New()
@@ -556,10 +626,7 @@ func (s *MySQLStore) AddCharacterAchievement(characterID, ownerID string, achiev
 	character.AntiAchievements = append(character.AntiAchievements, achievement)
 	character.UpdatedAt = Now()
 
-	ctx, cancel := mysqlCtx()
-	defer cancel()
-
-	res, err := s.db.ExecContext(ctx, `
+	res, err := tx.ExecContext(ctx, `
 		UPDATE characters
 		SET data = ?, updated_at = ?
 		WHERE id = ? AND owner_id = ?
@@ -570,6 +637,10 @@ func (s *MySQLStore) AddCharacterAchievement(characterID, ownerID string, achiev
 	}
 	affected, _ := res.RowsAffected()
 	if affected == 0 {
+		return models.Character{}, false
+	}
+	if err := tx.Commit(); err != nil {
+		logMySQLError("AddCharacterAchievement commit", err)
 		return models.Character{}, false
 	}
 	return character, true
@@ -898,14 +969,14 @@ func (s *MySQLStore) ListCalendarEventsForUser(userID string) []models.CalendarE
 	return events
 }
 
-func (s *MySQLStore) CreateCalendarEvent(event models.CalendarEvent) models.CalendarEvent {
+func (s *MySQLStore) CreateCalendarEvent(event models.CalendarEvent) (models.CalendarEvent, error) {
 	ctx, cancel := mysqlCtx()
 	defer cancel()
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		logMySQLError("CreateCalendarEvent begin", err)
-		return models.CalendarEvent{}
+		return models.CalendarEvent{}, fmt.Errorf("create calendar event: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -916,19 +987,19 @@ func (s *MySQLStore) CreateCalendarEvent(event models.CalendarEvent) models.Cale
 		VALUES (?, ?, ?, ?, ?, ?)
 	`, event.ID, event.CampaignID, event.CreatedBy, event.Date, jsonPayload(event), event.CreatedAt); err != nil {
 		logMySQLError("CreateCalendarEvent insert", err)
-		return models.CalendarEvent{}
+		return models.CalendarEvent{}, fmt.Errorf("create calendar event: %w", err)
 	}
 	if event.CampaignID != "" {
 		if err := s.emitCalendarReminderNotificationsTx(ctx, tx, event); err != nil {
 			logMySQLError("CreateCalendarEvent notifications", err)
-			return models.CalendarEvent{}
+			return models.CalendarEvent{}, fmt.Errorf("create calendar event: %w", err)
 		}
 	}
 	if err := tx.Commit(); err != nil {
 		logMySQLError("CreateCalendarEvent commit", err)
-		return models.CalendarEvent{}
+		return models.CalendarEvent{}, fmt.Errorf("create calendar event: %w", err)
 	}
-	return event
+	return event, nil
 }
 
 func (s *MySQLStore) ListNotifications(userID string) models.NotificationListResponse {
@@ -1095,6 +1166,18 @@ func getCampaignTx(ctx context.Context, tx *sql.Tx, campaignID string) (models.C
 		SELECT data
 		FROM campaigns
 		WHERE id = ?
+	`, campaignID))
+}
+
+// getCampaignForUpdateTx читает кампанию с блокировкой строки (FOR UPDATE), чтобы
+// сериализовать конкурентные read-modify-write операции над campaigns.data
+// (например проверку MaxPlayers при join или InvitationPostID при публикации).
+func getCampaignForUpdateTx(ctx context.Context, tx *sql.Tx, campaignID string) (models.Campaign, error) {
+	return scanPayload[models.Campaign](tx.QueryRowContext(ctx, `
+		SELECT data
+		FROM campaigns
+		WHERE id = ?
+		FOR UPDATE
 	`, campaignID))
 }
 

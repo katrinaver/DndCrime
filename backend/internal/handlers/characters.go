@@ -58,9 +58,16 @@ func (h *Handler) CreateCharacter(w http.ResponseWriter, r *http.Request) {
 	}
 
 	character.OwnerID = user.ID
-	if character.CampaignID != "" && !h.store.IsCampaignMember(character.CampaignID, user.ID) {
-		httpx.WriteError(w, http.StatusForbidden, "not a campaign member")
-		return
+	if character.CampaignID != "" {
+		isMember, err := h.store.IsCampaignMember(character.CampaignID, user.ID)
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, "internal error")
+			return
+		}
+		if !isMember {
+			httpx.WriteError(w, http.StatusForbidden, "not a campaign member")
+			return
+		}
 	}
 	if campaign, found := h.store.GetCampaign(character.CampaignID); found {
 		character.CampaignName = campaign.Name

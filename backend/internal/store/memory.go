@@ -300,6 +300,17 @@ func (s *MemoryStore) SaveProfile(profile models.UserProfile) models.UserProfile
 	return profile
 }
 
+func (s *MemoryStore) EnsureProfile(profile models.UserProfile) (models.UserProfile, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if existing, ok := s.profiles[profile.UserID]; ok {
+		return existing, nil
+	}
+	profile.UpdatedAt = Now()
+	s.profiles[profile.UserID] = profile
+	return profile, nil
+}
+
 func (s *MemoryStore) GetNote(userID string) (models.Note, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -334,7 +345,7 @@ func (s *MemoryStore) GetCampaign(id string) (models.Campaign, bool) {
 	return c, ok
 }
 
-func (s *MemoryStore) CreateCampaign(campaign models.Campaign, questionnaire models.CharacterQuestionnaire) models.Campaign {
+func (s *MemoryStore) CreateCampaign(campaign models.Campaign, questionnaire models.CharacterQuestionnaire) (models.Campaign, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	now := Now()
@@ -354,7 +365,7 @@ func (s *MemoryStore) CreateCampaign(campaign models.Campaign, questionnaire mod
 	s.chats[chat.ID] = chat
 	s.messages[chat.ID] = []models.ChatMessage{}
 
-	return campaign
+	return campaign, nil
 }
 
 func (s *MemoryStore) UpdateCampaign(campaignID string, update models.UpdateCampaignRequest) (models.Campaign, bool) {
@@ -392,14 +403,14 @@ func (s *MemoryStore) UpdateCampaign(campaignID string, update models.UpdateCamp
 	return campaign, true
 }
 
-func (s *MemoryStore) IsCampaignMaster(campaignID, userID string) bool {
+func (s *MemoryStore) IsCampaignMaster(campaignID, userID string) (bool, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	c, ok := s.campaigns[campaignID]
 	if !ok {
-		return false
+		return false, nil
 	}
-	return c.MasterID == userID
+	return c.MasterID == userID, nil
 }
 
 func (s *MemoryStore) ListCampaignAssets(campaignID string) []models.CampaignAsset {
@@ -458,7 +469,7 @@ func (s *MemoryStore) DeleteCampaignAsset(campaignID, assetID string) bool {
 	return true
 }
 
-func (s *MemoryStore) GetCampaignProgress(campaignID string) (models.CampaignProgress, bool) {
+func (s *MemoryStore) GetCampaignProgress(campaignID string) (models.CampaignProgress, bool, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	progress, ok := s.campaignProgress[campaignID]
@@ -467,15 +478,15 @@ func (s *MemoryStore) GetCampaignProgress(campaignID string) (models.CampaignPro
 			CampaignID: campaignID,
 			Notes:      []models.CampaignProgressNote{},
 			UpdatedAt:  Now(),
-		}, false
+		}, false, nil
 	}
 	if progress.Notes == nil {
 		progress.Notes = []models.CampaignProgressNote{}
 	}
-	return progress, true
+	return progress, true, nil
 }
 
-func (s *MemoryStore) SaveCampaignProgress(progress models.CampaignProgress) models.CampaignProgress {
+func (s *MemoryStore) SaveCampaignProgress(progress models.CampaignProgress) (models.CampaignProgress, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	progress.UpdatedAt = Now()
@@ -490,7 +501,7 @@ func (s *MemoryStore) SaveCampaignProgress(progress models.CampaignProgress) mod
 		existing.Notes = []models.CampaignProgressNote{}
 	}
 	s.campaignProgress[progress.CampaignID] = existing
-	return existing
+	return existing, nil
 }
 
 func (s *MemoryStore) CreateCampaignProgressNote(campaignID string, note models.CampaignProgressNote) (models.CampaignProgress, error) {
@@ -549,14 +560,14 @@ func (s *MemoryStore) DeleteCampaignProgressNote(campaignID, noteID string) (mod
 	return progress, nil
 }
 
-func (s *MemoryStore) IsCampaignMember(campaignID, userID string) bool {
+func (s *MemoryStore) IsCampaignMember(campaignID, userID string) (bool, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	c, ok := s.campaigns[campaignID]
 	if !ok {
-		return false
+		return false, nil
 	}
-	return c.MasterID == userID || contains(c.PlayerIDs, userID)
+	return c.MasterID == userID || contains(c.PlayerIDs, userID), nil
 }
 
 func (s *MemoryStore) GetQuestionnaire(campaignID string) (models.CharacterQuestionnaire, bool) {
@@ -803,7 +814,7 @@ func (s *MemoryStore) ListCalendarEventsForUser(userID string) []models.Calendar
 	return out
 }
 
-func (s *MemoryStore) CreateCalendarEvent(event models.CalendarEvent) models.CalendarEvent {
+func (s *MemoryStore) CreateCalendarEvent(event models.CalendarEvent) (models.CalendarEvent, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	event.ID = id.New()
@@ -812,7 +823,7 @@ func (s *MemoryStore) CreateCalendarEvent(event models.CalendarEvent) models.Cal
 	if event.CampaignID != "" {
 		s.emitCalendarReminderNotificationsLocked(event)
 	}
-	return event
+	return event, nil
 }
 
 func (s *MemoryStore) isCampaignMemberLocked(campaignID, userID string) bool {

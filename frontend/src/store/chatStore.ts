@@ -25,10 +25,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
     try {
       const data = await chatApi.fetchCampaignChatMessages(campaignId)
       const messages = Array.isArray(data) ? data : []
-      set((state) => ({
-        messagesByCampaign: { ...state.messagesByCampaign, [campaignId]: messages },
-        loadingByCampaign: { ...state.loadingByCampaign, [campaignId]: false },
-      }))
+      set((state) => {
+        const serverIds = new Set(messages.map((message) => message.id))
+        const localOnly = (state.messagesByCampaign[campaignId] ?? []).filter(
+          (message) => !serverIds.has(message.id),
+        )
+        const merged = [...messages, ...localOnly].sort((a, b) =>
+          a.createdAt.localeCompare(b.createdAt),
+        )
+        return {
+          messagesByCampaign: { ...state.messagesByCampaign, [campaignId]: merged },
+          loadingByCampaign: { ...state.loadingByCampaign, [campaignId]: false },
+        }
+      })
     } catch {
       set((state) => ({
         loadingByCampaign: { ...state.loadingByCampaign, [campaignId]: false },

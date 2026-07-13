@@ -34,12 +34,19 @@ func (h *Handler) CreateCalendarEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.CampaignID != "" && !h.store.IsCampaignMember(req.CampaignID, user.ID) {
-		httpx.WriteError(w, http.StatusForbidden, "forbidden")
-		return
+	if req.CampaignID != "" {
+		isMember, err := h.store.IsCampaignMember(req.CampaignID, user.ID)
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, "internal error")
+			return
+		}
+		if !isMember {
+			httpx.WriteError(w, http.StatusForbidden, "forbidden")
+			return
+		}
 	}
 
-	event := h.store.CreateCalendarEvent(models.CalendarEvent{
+	event, err := h.store.CreateCalendarEvent(models.CalendarEvent{
 		Date:       req.Date,
 		Time:       req.Time,
 		Title:      req.Title,
@@ -48,5 +55,9 @@ func (h *Handler) CreateCalendarEvent(w http.ResponseWriter, r *http.Request) {
 		Place:      req.Place,
 		CreatedBy:  user.ID,
 	})
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "failed to create event")
+		return
+	}
 	httpx.WriteJSON(w, http.StatusCreated, event)
 }

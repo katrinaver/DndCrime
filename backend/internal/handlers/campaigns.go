@@ -28,7 +28,12 @@ func (h *Handler) GetCampaign(w http.ResponseWriter, r *http.Request) {
 	}
 
 	campaignID := chi.URLParam(r, "campaignID")
-	if !h.store.IsCampaignMember(campaignID, user.ID) {
+	isMember, err := h.store.IsCampaignMember(campaignID, user.ID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if !isMember {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden")
 		return
 	}
@@ -90,10 +95,14 @@ func (h *Handler) CreateCampaign(w http.ResponseWriter, r *http.Request) {
 		Fields:      fields,
 	}
 
-	created := h.store.CreateCampaign(campaign, questionnaire)
+	created, err := h.store.CreateCampaign(campaign, questionnaire)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "failed to create campaign")
+		return
+	}
 
 	if req.SessionDate != "" {
-		h.store.CreateCalendarEvent(models.CalendarEvent{
+		if _, err := h.store.CreateCalendarEvent(models.CalendarEvent{
 			Date:       req.SessionDate,
 			Time:       req.SessionTime,
 			Title:      "Сессия: " + created.Name,
@@ -101,7 +110,10 @@ func (h *Handler) CreateCampaign(w http.ResponseWriter, r *http.Request) {
 			Campaign:   created.Name,
 			Place:      req.Place,
 			CreatedBy:  user.ID,
-		})
+		}); err != nil {
+			// best-effort: кампания уже создана, событие календаря вторично
+			_ = err
+		}
 	}
 
 	httpx.WriteJSON(w, http.StatusCreated, h.enrichCampaign(created))
@@ -115,7 +127,12 @@ func (h *Handler) UpdateCampaign(w http.ResponseWriter, r *http.Request) {
 	}
 
 	campaignID := chi.URLParam(r, "campaignID")
-	if !h.store.IsCampaignMaster(campaignID, user.ID) {
+	isMaster, err := h.store.IsCampaignMaster(campaignID, user.ID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if !isMaster {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden")
 		return
 	}
@@ -146,7 +163,12 @@ func (h *Handler) ListCampaignAssets(w http.ResponseWriter, r *http.Request) {
 	}
 
 	campaignID := chi.URLParam(r, "campaignID")
-	if !h.store.IsCampaignMember(campaignID, user.ID) {
+	isMember, err := h.store.IsCampaignMember(campaignID, user.ID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if !isMember {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden")
 		return
 	}
@@ -162,7 +184,12 @@ func (h *Handler) CreateCampaignAsset(w http.ResponseWriter, r *http.Request) {
 	}
 
 	campaignID := chi.URLParam(r, "campaignID")
-	if !h.store.IsCampaignMaster(campaignID, user.ID) {
+	isMaster, err := h.store.IsCampaignMaster(campaignID, user.ID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if !isMaster {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden")
 		return
 	}
@@ -195,7 +222,12 @@ func (h *Handler) UpdateCampaignAsset(w http.ResponseWriter, r *http.Request) {
 	}
 
 	campaignID := chi.URLParam(r, "campaignID")
-	if !h.store.IsCampaignMaster(campaignID, user.ID) {
+	isMaster, err := h.store.IsCampaignMaster(campaignID, user.ID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if !isMaster {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden")
 		return
 	}
@@ -232,7 +264,12 @@ func (h *Handler) DeleteCampaignAsset(w http.ResponseWriter, r *http.Request) {
 	}
 
 	campaignID := chi.URLParam(r, "campaignID")
-	if !h.store.IsCampaignMaster(campaignID, user.ID) {
+	isMaster, err := h.store.IsCampaignMaster(campaignID, user.ID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if !isMaster {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden")
 		return
 	}
@@ -253,12 +290,21 @@ func (h *Handler) GetCampaignProgress(w http.ResponseWriter, r *http.Request) {
 	}
 
 	campaignID := chi.URLParam(r, "campaignID")
-	if !h.store.IsCampaignMember(campaignID, user.ID) {
+	isMember, err := h.store.IsCampaignMember(campaignID, user.ID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if !isMember {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden")
 		return
 	}
 
-	progress, _ := h.store.GetCampaignProgress(campaignID)
+	progress, _, err := h.store.GetCampaignProgress(campaignID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "failed to load progress")
+		return
+	}
 	if progress.CampaignID == "" {
 		progress.CampaignID = campaignID
 	}
@@ -276,7 +322,12 @@ func (h *Handler) SaveCampaignProgress(w http.ResponseWriter, r *http.Request) {
 	}
 
 	campaignID := chi.URLParam(r, "campaignID")
-	if !h.store.IsCampaignMaster(campaignID, user.ID) {
+	isMaster, err := h.store.IsCampaignMaster(campaignID, user.ID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if !isMaster {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden")
 		return
 	}
@@ -291,7 +342,12 @@ func (h *Handler) SaveCampaignProgress(w http.ResponseWriter, r *http.Request) {
 		CampaignID:     campaignID,
 		CurrentChapter: req.CurrentChapter,
 	}
-	httpx.WriteJSON(w, http.StatusOK, h.store.SaveCampaignProgress(progress))
+	saved, err := h.store.SaveCampaignProgress(progress)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "failed to save progress")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, saved)
 }
 
 func (h *Handler) CreateCampaignProgressNote(w http.ResponseWriter, r *http.Request) {
@@ -302,7 +358,12 @@ func (h *Handler) CreateCampaignProgressNote(w http.ResponseWriter, r *http.Requ
 	}
 
 	campaignID := chi.URLParam(r, "campaignID")
-	if !h.store.IsCampaignMaster(campaignID, user.ID) {
+	isMaster, err := h.store.IsCampaignMaster(campaignID, user.ID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if !isMaster {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden")
 		return
 	}
@@ -338,13 +399,18 @@ func (h *Handler) DeleteCampaignProgressNote(w http.ResponseWriter, r *http.Requ
 	}
 
 	campaignID := chi.URLParam(r, "campaignID")
-	if !h.store.IsCampaignMaster(campaignID, user.ID) {
+	isMaster, err := h.store.IsCampaignMaster(campaignID, user.ID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if !isMaster {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden")
 		return
 	}
 
 	noteID := chi.URLParam(r, "noteID")
-	_, err := h.store.DeleteCampaignProgressNote(campaignID, noteID)
+	_, err = h.store.DeleteCampaignProgressNote(campaignID, noteID)
 	if err != nil {
 		if err == store.ErrCampaignNotFound {
 			httpx.WriteError(w, http.StatusNotFound, "campaign not found")
@@ -364,7 +430,12 @@ func (h *Handler) PublishCampaignInvitation(w http.ResponseWriter, r *http.Reque
 	}
 
 	campaignID := chi.URLParam(r, "campaignID")
-	if !h.store.IsCampaignMaster(campaignID, user.ID) {
+	isMaster, err := h.store.IsCampaignMaster(campaignID, user.ID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if !isMaster {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden")
 		return
 	}
@@ -453,7 +524,12 @@ func (h *Handler) DeleteCampaign(w http.ResponseWriter, r *http.Request) {
 	}
 
 	campaignID := chi.URLParam(r, "campaignID")
-	if !h.store.IsCampaignMaster(campaignID, user.ID) {
+	isMaster, err := h.store.IsCampaignMaster(campaignID, user.ID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if !isMaster {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden")
 		return
 	}
@@ -477,7 +553,12 @@ func (h *Handler) GetCampaignQuestionnaire(w http.ResponseWriter, r *http.Reques
 	}
 
 	campaignID := chi.URLParam(r, "campaignID")
-	if !h.store.IsCampaignMember(campaignID, user.ID) {
+	isMember, err := h.store.IsCampaignMember(campaignID, user.ID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if !isMember {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden")
 		return
 	}
@@ -521,7 +602,12 @@ func (h *Handler) ListCampaignParty(w http.ResponseWriter, r *http.Request) {
 	}
 
 	campaignID := chi.URLParam(r, "campaignID")
-	if !h.store.IsCampaignMember(campaignID, user.ID) {
+	isMember, err := h.store.IsCampaignMember(campaignID, user.ID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if !isMember {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden")
 		return
 	}

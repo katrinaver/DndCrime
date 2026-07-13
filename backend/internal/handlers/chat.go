@@ -17,7 +17,12 @@ func (h *Handler) ListCampaignChatMessages(w http.ResponseWriter, r *http.Reques
 	}
 
 	campaignID := chi.URLParam(r, "campaignID")
-	if !h.store.IsCampaignMember(campaignID, user.ID) {
+	isMember, err := h.store.IsCampaignMember(campaignID, user.ID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if !isMember {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden")
 		return
 	}
@@ -38,7 +43,12 @@ func (h *Handler) CreateCampaignChatMessage(w http.ResponseWriter, r *http.Reque
 	}
 
 	campaignID := chi.URLParam(r, "campaignID")
-	if !h.store.IsCampaignMember(campaignID, user.ID) {
+	isMember, err := h.store.IsCampaignMember(campaignID, user.ID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if !isMember {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden")
 		return
 	}
@@ -76,7 +86,12 @@ func (h *Handler) UpdateCampaignChatMessage(w http.ResponseWriter, r *http.Reque
 	}
 
 	campaignID := chi.URLParam(r, "campaignID")
-	if !h.store.IsCampaignMember(campaignID, user.ID) {
+	isMember, err := h.store.IsCampaignMember(campaignID, user.ID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if !isMember {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden")
 		return
 	}
@@ -124,7 +139,12 @@ func (h *Handler) DeleteCampaignChatMessage(w http.ResponseWriter, r *http.Reque
 	}
 
 	campaignID := chi.URLParam(r, "campaignID")
-	if !h.store.IsCampaignMember(campaignID, user.ID) {
+	isMember, err := h.store.IsCampaignMember(campaignID, user.ID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if !isMember {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden")
 		return
 	}
