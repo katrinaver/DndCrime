@@ -17,7 +17,12 @@ func (h *Handler) GetProfile(w http.ResponseWriter, r *http.Request) {
 
 	profile, found := h.store.GetProfile(user.ID)
 	if !found {
-		profile = h.store.SaveProfile(defaultProfile(user))
+		ensured, err := h.store.EnsureProfile(defaultProfile(user))
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, "failed to load profile")
+			return
+		}
+		profile = ensured
 	}
 	httpx.WriteJSON(w, http.StatusOK, profile)
 }

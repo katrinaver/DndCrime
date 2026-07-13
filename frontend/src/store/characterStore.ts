@@ -34,17 +34,21 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
     try {
       const data = await charactersApi.fetchCharacters()
       const list = Array.isArray(data) ? data : []
-      const sheets: Record<string, CharacterSheet> = {}
+      const loadedSheets: Record<string, CharacterSheet> = {}
       await Promise.all(
         list.map(async (item) => {
           try {
-            sheets[item.id] = await charactersApi.fetchCharacter(item.id)
+            loadedSheets[item.id] = await charactersApi.fetchCharacter(item.id)
           } catch {
             // skip failed sheet
           }
         }),
       )
-      set({ list, sheets, loading: false })
+      set((state) => ({
+        list,
+        sheets: { ...state.sheets, ...loadedSheets },
+        loading: false,
+      }))
     } catch (err) {
       set({
         loading: false,

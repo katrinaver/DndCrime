@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '../components/ui/Button'
 import { useAuth } from '../context/AuthContext'
 import { useNotesStore } from '../store/notesStore'
@@ -14,6 +14,7 @@ export function NotesPage() {
 
   const [draft, setDraft] = useState('')
   const [saved, setSaved] = useState(false)
+  const hasEditedRef = useRef(false)
 
   useEffect(() => {
     if (!user) return
@@ -21,10 +22,12 @@ export function NotesPage() {
   }, [user, fetchNotes])
 
   useEffect(() => {
+    if (hasEditedRef.current) return
     setDraft(content)
   }, [content])
 
   function handleChange(value: string) {
+    hasEditedRef.current = true
     setSaved(false)
     setDraft(value)
   }

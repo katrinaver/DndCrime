@@ -10,6 +10,7 @@ type Store interface {
 	// Profile
 	GetProfile(userID string) (models.UserProfile, bool)
 	SaveProfile(profile models.UserProfile) models.UserProfile
+	EnsureProfile(profile models.UserProfile) (models.UserProfile, error)
 
 	// Notes
 	GetNote(userID string) (models.Note, bool)
@@ -18,10 +19,10 @@ type Store interface {
 	// Campaigns
 	ListCampaignsForUser(userID string) []models.Campaign
 	GetCampaign(id string) (models.Campaign, bool)
-	CreateCampaign(campaign models.Campaign, questionnaire models.CharacterQuestionnaire) models.Campaign
+	CreateCampaign(campaign models.Campaign, questionnaire models.CharacterQuestionnaire) (models.Campaign, error)
 	UpdateCampaign(campaignID string, update models.UpdateCampaignRequest) (models.Campaign, bool)
-	IsCampaignMember(campaignID, userID string) bool
-	IsCampaignMaster(campaignID, userID string) bool
+	IsCampaignMember(campaignID, userID string) (bool, error)
+	IsCampaignMaster(campaignID, userID string) (bool, error)
 	JoinCampaign(campaignID, userID string) (models.Campaign, error)
 	LeaveCampaign(campaignID, userID string) error
 	DeleteCampaign(campaignID, masterID string) error
@@ -34,8 +35,8 @@ type Store interface {
 	DeleteCampaignAsset(campaignID, assetID string) bool
 
 	// Campaign progress
-	GetCampaignProgress(campaignID string) (models.CampaignProgress, bool)
-	SaveCampaignProgress(progress models.CampaignProgress) models.CampaignProgress
+	GetCampaignProgress(campaignID string) (models.CampaignProgress, bool, error)
+	SaveCampaignProgress(progress models.CampaignProgress) (models.CampaignProgress, error)
 	CreateCampaignProgressNote(campaignID string, note models.CampaignProgressNote) (models.CampaignProgress, error)
 	DeleteCampaignProgressNote(campaignID, noteID string) (models.CampaignProgress, error)
 
@@ -69,7 +70,7 @@ type Store interface {
 
 	// Calendar
 	ListCalendarEventsForUser(userID string) []models.CalendarEvent
-	CreateCalendarEvent(event models.CalendarEvent) models.CalendarEvent
+	CreateCalendarEvent(event models.CalendarEvent) (models.CalendarEvent, error)
 
 	// Notifications
 	ListNotifications(userID string) models.NotificationListResponse

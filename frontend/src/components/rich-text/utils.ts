@@ -1,5 +1,15 @@
 import DOMPurify from 'dompurify'
 
+// Форсим rel="noopener noreferrer" на любых ссылках с target: DOMPurify пропускает
+// target/rel, но сам noopener не дописывает. Без этого HTML, отправленный сырьём в
+// API (чат/новости/заметки), может открыть вкладку с доступом к window.opener
+// (reverse tabnabbing).
+DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+  if (node instanceof Element && node.tagName === 'A' && node.hasAttribute('target')) {
+    node.setAttribute('rel', 'noopener noreferrer')
+  }
+})
+
 export function sanitizeRichText(html: string): string {
   return DOMPurify.sanitize(html, {
     ADD_ATTR: ['target', 'download'],
