@@ -285,6 +285,69 @@ func TestJoinCampaign_EnforcesLimits(t *testing.T) {
 	}
 }
 
+// Инвайт-ссылки: токен создаётся вместе с кампанией, резолвится, отзывается.
+func TestInviteToken_Lifecycle(t *testing.T) {
+	st := store.NewMemory()
+	c := newCampaign(t, st, "contract-invite-master", 4)
+
+	if c.InviteToken == "" {
+		t.Fatal("CreateCampaign should assign an invite token")
+	}
+
+	got, ok := st.GetCampaignByInviteToken(c.InviteToken)
+	if !ok || got.ID != c.ID {
+		t.Fatalf("GetCampaignByInviteToken: got (%q, %v), want campaign %q", got.ID, ok, c.ID)
+	}
+
+	// Ensure идемпотентен для кампании с токеном.
+	token, err := st.EnsureCampaignInviteToken(c.ID)
+	if err != nil || token != c.InviteToken {
+		t.Errorf("EnsureCampaignInviteToken: got (%q, %v), want existing token %q", token, err, c.InviteToken)
+	}
+
+	// Reset отзывает старую ссылку и выдаёт новую.
+	fresh, err := st.ResetCampaignInviteToken(c.ID)
+	if err != nil {
+		t.Fatalf("ResetCampaignInviteToken: %v", err)
+	}
+	if fresh == c.InviteToken {
+		t.Error("Reset must return a different token")
+	}
+	if _, ok := st.GetCampaignByInviteToken(c.InviteToken); ok {
+		t.Error("old token must stop resolving after reset")
+	}
+	if got, ok := st.GetCampaignByInviteToken(fresh); !ok || got.ID != c.ID {
+		t.Error("new token must resolve to the campaign")
+	}
+}
+
+// Инвайт-ссылки: ленивый бэкфилл для кампаний, созданных до фичи, и границы.
+func TestInviteToken_BackfillAndEdgeCases(t *testing.T) {
+	st := store.NewMemory()
+
+	// Seed-кампания "1" создана без токена — Ensure генерирует и запоминает его.
+	first, err := st.EnsureCampaignInviteToken("1")
+	if err != nil || first == "" {
+		t.Fatalf("Ensure on legacy campaign: got (%q, %v), want generated token", first, err)
+	}
+	second, err := st.EnsureCampaignInviteToken("1")
+	if err != nil || second != first {
+		t.Errorf("Ensure must be idempotent: got (%q, %v), want %q", second, err, first)
+	}
+
+	// Пустой токен не должен резолвиться в кампании без токена.
+	if _, ok := st.GetCampaignByInviteToken(""); ok {
+		t.Error("empty token must never resolve")
+	}
+
+	if _, err := st.EnsureCampaignInviteToken("missing"); !errors.Is(err, store.ErrCampaignNotFound) {
+		t.Errorf("Ensure on missing campaign: got %v, want ErrCampaignNotFound", err)
+	}
+	if _, err := st.ResetCampaignInviteToken("missing"); !errors.Is(err, store.ErrCampaignNotFound) {
+		t.Errorf("Reset on missing campaign: got %v, want ErrCampaignNotFound", err)
+	}
+}
+
 // MED #5: PublishCampaignInvitation идемпотентен (нет дублей приглашений).
 func TestPublishCampaignInvitation_NoDuplicates(t *testing.T) {
 	st := store.NewMemory()

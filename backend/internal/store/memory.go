@@ -76,7 +76,10 @@ func (s *MemoryStore) seed() {
 		Setting: "Классическое подземелье для группы искателей приключений", MaxPlayers: 5, Level: "5",
 		AntiAchievementPool: []string{"Случайно активировал ловушку на себе"},
 		SessionDate: "2026-07-20", SessionTime: "18:30",
-		Status: models.CampaignActive, InvitationPostID: invitePostID, CreatedAt: now, UpdatedAt: now,
+		Status: models.CampaignActive, InvitationPostID: invitePostID,
+		// Фиксированный токен для dev-сценариев: /join/seed-invite-3
+		InviteToken: "seed-invite-3",
+		CreatedAt:   now, UpdatedAt: now,
 	}
 
 	campaign4 := models.Campaign{
@@ -350,6 +353,7 @@ func (s *MemoryStore) CreateCampaign(campaign models.Campaign, questionnaire mod
 	defer s.mu.Unlock()
 	now := Now()
 	campaign.ID = id.New()
+	campaign.InviteToken = id.New()
 	campaign.CreatedAt = now
 	campaign.UpdatedAt = now
 	campaign.Players = len(campaign.PlayerIDs)
@@ -423,6 +427,48 @@ func (s *MemoryStore) ListCampaignAssets(campaignID string) []models.CampaignAss
 		}
 	}
 	return out
+}
+
+func (s *MemoryStore) GetCampaignByInviteToken(token string) (models.Campaign, bool) {
+	if token == "" {
+		return models.Campaign{}, false
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, c := range s.campaigns {
+		if c.InviteToken == token {
+			return c, true
+		}
+	}
+	return models.Campaign{}, false
+}
+
+// EnsureCampaignInviteToken выдаёт токен кампании, генерируя его для кампаний,
+// созданных до появления инвайт-ссылок.
+func (s *MemoryStore) EnsureCampaignInviteToken(campaignID string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	campaign, ok := s.campaigns[campaignID]
+	if !ok {
+		return "", ErrCampaignNotFound
+	}
+	if campaign.InviteToken == "" {
+		campaign.InviteToken = id.New()
+		s.campaigns[campaignID] = campaign
+	}
+	return campaign.InviteToken, nil
+}
+
+func (s *MemoryStore) ResetCampaignInviteToken(campaignID string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	campaign, ok := s.campaigns[campaignID]
+	if !ok {
+		return "", ErrCampaignNotFound
+	}
+	campaign.InviteToken = id.New()
+	s.campaigns[campaignID] = campaign
+	return campaign.InviteToken, nil
 }
 
 func (s *MemoryStore) CreateCampaignAsset(campaignID string, asset models.CampaignAsset) models.CampaignAsset {

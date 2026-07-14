@@ -128,8 +128,24 @@ export function publishCampaignInvitation(campaignId: string) {
   })
 }
 
-export function fetchCampaignInvite(campaignId: string) {
-  return apiFetch<CampaignInvitePreview>(`/api/campaigns/${campaignId}/invite`)
+export function fetchInvitePreview(token: string) {
+  return apiFetch<CampaignInvitePreview>(`/api/invites/${token}`)
+}
+
+export function joinCampaignByInvite(token: string) {
+  return apiFetch<Campaign>(`/api/invites/${token}/join`, {
+    method: 'POST',
+  })
+}
+
+export function fetchCampaignInviteLink(campaignId: string) {
+  return apiFetch<{ token: string }>(`/api/campaigns/${campaignId}/invite-link`)
+}
+
+export function resetCampaignInviteLink(campaignId: string) {
+  return apiFetch<{ token: string }>(`/api/campaigns/${campaignId}/invite-link/reset`, {
+    method: 'POST',
+  })
 }
 
 export function joinCampaign(campaignId: string) {

@@ -2,15 +2,15 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { AuthLayout } from '../components/AuthLayout'
 import { Button } from '../components/ui/Button'
-import { fetchCampaignInvite } from '../api/campaigns'
+import { fetchInvitePreview } from '../api/campaigns'
 import { ApiError } from '../lib/apiClient'
 import type { CampaignInvitePreview } from '../modules/campaigns/types'
 import { useCampaignStore } from '../store/campaignStore'
 
 export function JoinCampaignPage() {
-  const { campaignId = '' } = useParams()
+  const { token = '' } = useParams()
   const navigate = useNavigate()
-  const joinCampaign = useCampaignStore((s) => s.joinCampaign)
+  const joinCampaignByInvite = useCampaignStore((s) => s.joinCampaignByInvite)
 
   const [invite, setInvite] = useState<CampaignInvitePreview | null>(null)
   const [loading, setLoading] = useState(true)
@@ -22,7 +22,7 @@ export function JoinCampaignPage() {
     let cancelled = false
     setLoading(true)
     setLoadError(null)
-    fetchCampaignInvite(campaignId)
+    fetchInvitePreview(token)
       .then((data) => {
         if (!cancelled) setInvite(data)
       })
@@ -30,7 +30,7 @@ export function JoinCampaignPage() {
         if (cancelled) return
         setLoadError(
           err instanceof ApiError && err.status === 404
-            ? 'Кампания не найдена — возможно, ссылка устарела'
+            ? 'Приглашение не найдено — возможно, мастер сбросил ссылку'
             : 'Не удалось загрузить приглашение, попробуйте обновить страницу',
         )
       })
@@ -40,17 +40,19 @@ export function JoinCampaignPage() {
     return () => {
       cancelled = true
     }
-  }, [campaignId])
+  }, [token])
 
   async function handleJoin() {
     setJoining(true)
     setJoinError(null)
     try {
-      await joinCampaign(campaignId)
-      navigate(`/campaigns/${campaignId}/menu`, { replace: true })
+      const campaign = await joinCampaignByInvite(token)
+      navigate(`/campaigns/${campaign.id}/menu`, { replace: true })
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         setJoinError('Не получилось присоединиться: в кампании нет мест или набор закрыт')
+      } else if (err instanceof ApiError && err.status === 404) {
+        setJoinError('Приглашение больше не действует — попросите у мастера новую ссылку')
       } else {
         setJoinError('Не удалось присоединиться, попробуйте ещё раз')
       }
@@ -120,7 +122,10 @@ export function JoinCampaignPage() {
         {invite.isMember ? (
           <>
             <p className="mb-4 text-sm text-dnd-muted">Вы уже участвуете в этой кампании</p>
-            <Button type="button" onClick={() => navigate(`/campaigns/${campaignId}/menu`)}>
+            <Button
+              type="button"
+              onClick={() => navigate(`/campaigns/${invite.campaignId}/menu`)}
+            >
               Открыть кампанию
             </Button>
           </>

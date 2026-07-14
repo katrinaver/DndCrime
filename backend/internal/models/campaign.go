@@ -35,6 +35,10 @@ type Campaign struct {
 	LastSession         string         `json:"lastSession,omitempty"`
 	Status              CampaignStatus `json:"status"`
 	InvitationPostID    string         `json:"invitationPostId,omitempty"`
+	// InviteToken — секрет инвайт-ссылки /join/<token>. Наружу отдаётся только
+	// мастеру через /invite-link (enrichCampaign вычищает поле из ответов API);
+	// сброс токена отзывает все разосланные ссылки.
+	InviteToken         string         `json:"inviteToken,omitempty"`
 	CreatedAt           time.Time      `json:"createdAt"`
 	UpdatedAt           time.Time      `json:"updatedAt"`
 }

@@ -31,6 +31,7 @@ interface CampaignState {
   updateCampaign: (campaignId: string, input: CampaignUpdateInput) => Promise<Campaign>
   publishCampaignInvitation: (campaignId: string) => Promise<{ post: NewsPost; campaign: Campaign }>
   joinCampaign: (campaignId: string) => Promise<Campaign>
+  joinCampaignByInvite: (token: string) => Promise<Campaign>
   leaveCampaign: (campaignId: string) => Promise<void>
   deleteCampaign: (campaignId: string) => Promise<void>
   fetchCampaignAssets: (campaignId: string) => Promise<CampaignAsset[]>
@@ -149,6 +150,19 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
       return {
         campaigns: exists
           ? state.campaigns.map((c) => (c.id === campaignId ? campaign : c))
+          : [...state.campaigns, campaign],
+      }
+    })
+    return campaign
+  },
+
+  joinCampaignByInvite: async (token) => {
+    const campaign = await campaignsApi.joinCampaignByInvite(token)
+    set((state) => {
+      const exists = state.campaigns.some((c) => c.id === campaign.id)
+      return {
+        campaigns: exists
+          ? state.campaigns.map((c) => (c.id === campaign.id ? campaign : c))
           : [...state.campaigns, campaign],
       }
     })

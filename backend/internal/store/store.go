@@ -27,6 +27,10 @@ type Store interface {
 	LeaveCampaign(campaignID, userID string) error
 	DeleteCampaign(campaignID, masterID string) error
 	PublishCampaignInvitation(campaignID, authorID, authorName string) (models.NewsPost, models.Campaign, error)
+	// Инвайт-ссылки: токен генерируется лениво (Ensure) и может быть отозван (Reset).
+	GetCampaignByInviteToken(token string) (models.Campaign, bool)
+	EnsureCampaignInviteToken(campaignID string) (string, error)
+	ResetCampaignInviteToken(campaignID string) (string, error)
 
 	// Campaign assets
 	ListCampaignAssets(campaignID string) []models.CampaignAsset

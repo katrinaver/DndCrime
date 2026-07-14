@@ -87,7 +87,7 @@ function AppRoutes() {
       <Route path="/terms-of-service" element={<TermsOfServicePage />} />
 
       <Route element={<ProtectedRoute />}>
-        <Route path="/join/:campaignId" element={<JoinCampaignPage />} />
+        <Route path="/join/:token" element={<JoinCampaignPage />} />
         <Route element={<AppLayout />}>
           <Route path="/home" element={<HomePage />} />
           <Route path="/campaigns" element={<CampaignsPage />} />
