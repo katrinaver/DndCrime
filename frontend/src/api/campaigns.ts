@@ -4,6 +4,7 @@ import type {
   Campaign,
   CampaignAsset,
   CampaignCreateInput,
+  CampaignInvitePreview,
   CampaignProgress,
   CampaignUpdateInput,
   QuestionnaireFieldSetting,
@@ -123,6 +124,26 @@ export interface PublishInvitationResponse {
 
 export function publishCampaignInvitation(campaignId: string) {
   return apiFetch<PublishInvitationResponse>(`/api/campaigns/${campaignId}/invitation`, {
+    method: 'POST',
+  })
+}
+
+export function fetchInvitePreview(token: string) {
+  return apiFetch<CampaignInvitePreview>(`/api/invites/${token}`)
+}
+
+export function joinCampaignByInvite(token: string) {
+  return apiFetch<Campaign>(`/api/invites/${token}/join`, {
+    method: 'POST',
+  })
+}
+
+export function fetchCampaignInviteLink(campaignId: string) {
+  return apiFetch<{ token: string }>(`/api/campaigns/${campaignId}/invite-link`)
+}
+
+export function resetCampaignInviteLink(campaignId: string) {
+  return apiFetch<{ token: string }>(`/api/campaigns/${campaignId}/invite-link/reset`, {
     method: 'POST',
   })
 }

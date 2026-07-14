@@ -27,6 +27,7 @@ import { CharacterSheetPage } from './pages/CharacterSheetPage'
 import { CharactersPage } from './pages/CharactersPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { HomePage } from './pages/HomePage'
+import { JoinCampaignPage } from './pages/JoinCampaignPage'
 import { LandingPage } from './pages/LandingPage'
 import { LoginPage } from './pages/LoginPage'
 import { NewsPage } from './pages/NewsPage'
@@ -86,6 +87,7 @@ function AppRoutes() {
       <Route path="/terms-of-service" element={<TermsOfServicePage />} />
 
       <Route element={<ProtectedRoute />}>
+        <Route path="/join/:token" element={<JoinCampaignPage />} />
         <Route element={<AppLayout />}>
           <Route path="/home" element={<HomePage />} />
           <Route path="/campaigns" element={<CampaignsPage />} />

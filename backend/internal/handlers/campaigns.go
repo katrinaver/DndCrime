@@ -463,6 +463,127 @@ func (h *Handler) PublishCampaignInvitation(w http.ResponseWriter, r *http.Reque
 	})
 }
 
+// GetInvitePreview отдаёт превью кампании по токену инвайт-ссылки.
+// В отличие от GetCampaign доступен не только участникам: ссылку-приглашение
+// открывают ещё не присоединившиеся игроки.
+func (h *Handler) GetInvitePreview(w http.ResponseWriter, r *http.Request) {
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok {
+		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	token := chi.URLParam(r, "token")
+	campaign, found := h.store.GetCampaignByInviteToken(token)
+	if !found {
+		httpx.WriteError(w, http.StatusNotFound, "invite not found")
+		return
+	}
+
+	isMember, err := h.store.IsCampaignMember(campaign.ID, user.ID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+
+	enriched := h.enrichCampaign(campaign)
+	httpx.WriteJSON(w, http.StatusOK, models.CampaignInvitePreview{
+		CampaignID: campaign.ID,
+		Name:       campaign.Name,
+		Master:     *enriched.MasterProfile,
+		Setting:    campaign.Setting,
+		Level:      campaign.Level,
+		Players:    campaign.Players,
+		MaxPlayers: campaign.MaxPlayers,
+		Status:     campaign.Status,
+		IsMember:   isMember,
+	})
+}
+
+// JoinByInvite присоединяет пользователя к кампании по токену инвайт-ссылки.
+func (h *Handler) JoinByInvite(w http.ResponseWriter, r *http.Request) {
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok {
+		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	token := chi.URLParam(r, "token")
+	campaign, found := h.store.GetCampaignByInviteToken(token)
+	if !found {
+		httpx.WriteError(w, http.StatusNotFound, "invite not found")
+		return
+	}
+
+	joined, err := h.store.JoinCampaign(campaign.ID, user.ID)
+	h.writeJoinResult(w, joined, err)
+}
+
+// GetCampaignInviteLink отдаёт мастеру токен инвайт-ссылки кампании.
+// Только здесь токен покидает бэкенд — из ответов с кампанией его вычищает
+// enrichCampaign.
+func (h *Handler) GetCampaignInviteLink(w http.ResponseWriter, r *http.Request) {
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok {
+		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	campaignID := chi.URLParam(r, "campaignID")
+	isMaster, err := h.store.IsCampaignMaster(campaignID, user.ID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if !isMaster {
+		httpx.WriteError(w, http.StatusForbidden, "forbidden")
+		return
+	}
+
+	token, err := h.store.EnsureCampaignInviteToken(campaignID)
+	if err != nil {
+		if err == store.ErrCampaignNotFound {
+			httpx.WriteError(w, http.StatusNotFound, "campaign not found")
+			return
+		}
+		httpx.WriteError(w, http.StatusInternalServerError, "failed to get invite link")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"token": token})
+}
+
+// ResetCampaignInviteLink генерирует новый токен: все разосланные ранее
+// ссылки перестают действовать.
+func (h *Handler) ResetCampaignInviteLink(w http.ResponseWriter, r *http.Request) {
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok {
+		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	campaignID := chi.URLParam(r, "campaignID")
+	isMaster, err := h.store.IsCampaignMaster(campaignID, user.ID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if !isMaster {
+		httpx.WriteError(w, http.StatusForbidden, "forbidden")
+		return
+	}
+
+	token, err := h.store.ResetCampaignInviteToken(campaignID)
+	if err != nil {
+		if err == store.ErrCampaignNotFound {
+			httpx.WriteError(w, http.StatusNotFound, "campaign not found")
+			return
+		}
+		httpx.WriteError(w, http.StatusInternalServerError, "failed to reset invite link")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"token": token})
+}
+
 func (h *Handler) JoinCampaign(w http.ResponseWriter, r *http.Request) {
 	user, ok := auth.UserFromContext(r.Context())
 	if !ok {
@@ -472,6 +593,10 @@ func (h *Handler) JoinCampaign(w http.ResponseWriter, r *http.Request) {
 
 	campaignID := chi.URLParam(r, "campaignID")
 	campaign, err := h.store.JoinCampaign(campaignID, user.ID)
+	h.writeJoinResult(w, campaign, err)
+}
+
+func (h *Handler) writeJoinResult(w http.ResponseWriter, campaign models.Campaign, err error) {
 	if err != nil {
 		switch err {
 		case store.ErrCampaignNotFound:
@@ -621,6 +746,8 @@ func (h *Handler) ListCampaignParty(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) enrichCampaign(campaign models.Campaign) models.Campaign {
+	// Токен инвайт-ссылки — секрет мастера: наружу только через /invite-link.
+	campaign.InviteToken = ""
 	profile := models.CampaignMasterProfile{Name: campaign.MasterName}
 	if p, found := h.store.GetProfile(campaign.MasterID); found {
 		if p.Name != "" {

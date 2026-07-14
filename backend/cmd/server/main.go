@@ -108,6 +108,8 @@ func main() {
 				r.Post("/progress/notes", h.CreateCampaignProgressNote)
 				r.Delete("/progress/notes/{noteID}", h.DeleteCampaignProgressNote)
 				r.Post("/invitation", h.PublishCampaignInvitation)
+				r.Get("/invite-link", h.GetCampaignInviteLink)
+				r.Post("/invite-link/reset", h.ResetCampaignInviteLink)
 				r.Post("/join", h.JoinCampaign)
 				r.Post("/leave", h.LeaveCampaign)
 				r.Route("/chat", func(r chi.Router) {
@@ -117,6 +119,11 @@ func main() {
 					r.Delete("/messages/{messageID}", h.DeleteCampaignChatMessage)
 				})
 			})
+		})
+
+		r.Route("/invites", func(r chi.Router) {
+			r.Get("/{token}", h.GetInvitePreview)
+			r.Post("/{token}/join", h.JoinByInvite)
 		})
 
 		r.Route("/characters", func(r chi.Router) {

@@ -59,6 +59,19 @@ export interface CampaignMasterProfile {
   avatarUrl?: string
 }
 
+/** Ограниченная карточка кампании для страницы приглашения по ссылке. */
+export interface CampaignInvitePreview {
+  campaignId: string
+  name: string
+  master: CampaignMasterProfile
+  setting: string
+  level: string
+  players: number
+  maxPlayers: number
+  status: CampaignStatus
+  isMember: boolean
+}
+
 export interface Campaign {
   id: string
   name: string

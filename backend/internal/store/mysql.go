@@ -353,6 +353,84 @@ func (s *MySQLStore) GetCampaign(campaignID string) (models.Campaign, bool) {
 	return campaign, true
 }
 
+func (s *MySQLStore) GetCampaignByInviteToken(token string) (models.Campaign, bool) {
+	if token == "" {
+		return models.Campaign{}, false
+	}
+	ctx, cancel := mysqlCtx()
+	defer cancel()
+
+	// Токен лежит внутри data JSON — кампаний мало, полнотабличный JSON_EXTRACT
+	// приемлем; при росте можно вынести в generated column с индексом.
+	campaign, err := scanPayload[models.Campaign](s.db.QueryRowContext(ctx, `
+		SELECT data
+		FROM campaigns
+		WHERE JSON_UNQUOTE(JSON_EXTRACT(data, '$.inviteToken')) = ?
+	`, token))
+	if err != nil {
+		logMySQLError("GetCampaignByInviteToken", err)
+		return models.Campaign{}, false
+	}
+	campaign.PlayerIDs = s.listCampaignPlayers(ctx, campaign.ID)
+	campaign.Players = len(campaign.PlayerIDs)
+	return campaign, true
+}
+
+// EnsureCampaignInviteToken выдаёт токен кампании, атомарно генерируя его для
+// кампаний, созданных до появления инвайт-ссылок.
+func (s *MySQLStore) EnsureCampaignInviteToken(campaignID string) (string, error) {
+	ctx, cancel := mysqlCtx()
+	defer cancel()
+
+	if _, err := s.db.ExecContext(ctx, `
+		UPDATE campaigns
+		SET data = JSON_SET(data, '$.inviteToken', ?)
+		WHERE id = ?
+			AND (JSON_EXTRACT(data, '$.inviteToken') IS NULL
+				OR JSON_UNQUOTE(JSON_EXTRACT(data, '$.inviteToken')) = '')
+	`, id.New(), campaignID); err != nil {
+		logMySQLError("EnsureCampaignInviteToken update", err)
+		return "", err
+	}
+
+	var token string
+	err := s.db.QueryRowContext(ctx, `
+		SELECT JSON_UNQUOTE(JSON_EXTRACT(data, '$.inviteToken'))
+		FROM campaigns
+		WHERE id = ?
+	`, campaignID).Scan(&token)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", ErrCampaignNotFound
+		}
+		logMySQLError("EnsureCampaignInviteToken select", err)
+		return "", err
+	}
+	return token, nil
+}
+
+func (s *MySQLStore) ResetCampaignInviteToken(campaignID string) (string, error) {
+	ctx, cancel := mysqlCtx()
+	defer cancel()
+
+	token := id.New()
+	res, err := s.db.ExecContext(ctx, `
+		UPDATE campaigns
+		SET data = JSON_SET(data, '$.inviteToken', ?)
+		WHERE id = ?
+	`, token, campaignID)
+	if err != nil {
+		logMySQLError("ResetCampaignInviteToken", err)
+		return "", err
+	}
+	// Новый токен случайный и не совпадает со старым, поэтому 0 затронутых
+	// строк означает именно отсутствие кампании.
+	if affected, err := res.RowsAffected(); err == nil && affected == 0 {
+		return "", ErrCampaignNotFound
+	}
+	return token, nil
+}
+
 func (s *MySQLStore) CreateCampaign(campaign models.Campaign, questionnaire models.CharacterQuestionnaire) (models.Campaign, error) {
 	ctx, cancel := mysqlCtx()
 	defer cancel()
@@ -366,6 +444,7 @@ func (s *MySQLStore) CreateCampaign(campaign models.Campaign, questionnaire mode
 
 	now := Now()
 	campaign.ID = id.New()
+	campaign.InviteToken = id.New()
 	campaign.CreatedAt = now
 	campaign.UpdatedAt = now
 	campaign.Players = len(campaign.PlayerIDs)

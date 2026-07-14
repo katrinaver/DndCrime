@@ -35,8 +35,27 @@ type Campaign struct {
 	LastSession         string         `json:"lastSession,omitempty"`
 	Status              CampaignStatus `json:"status"`
 	InvitationPostID    string         `json:"invitationPostId,omitempty"`
+	// InviteToken — секрет инвайт-ссылки /join/<token>. Наружу отдаётся только
+	// мастеру через /invite-link (enrichCampaign вычищает поле из ответов API);
+	// сброс токена отзывает все разосланные ссылки.
+	InviteToken         string         `json:"inviteToken,omitempty"`
 	CreatedAt           time.Time      `json:"createdAt"`
 	UpdatedAt           time.Time      `json:"updatedAt"`
+}
+
+// CampaignInvitePreview — ограниченная карточка кампании для страницы
+// приглашения: доступна любому авторизованному пользователю по ссылке,
+// поэтому не содержит место встреч и состав партии.
+type CampaignInvitePreview struct {
+	CampaignID string                `json:"campaignId"`
+	Name       string                `json:"name"`
+	Master     CampaignMasterProfile `json:"master"`
+	Setting    string                `json:"setting"`
+	Level      string                `json:"level"`
+	Players    int                   `json:"players"`
+	MaxPlayers int                   `json:"maxPlayers"`
+	Status     CampaignStatus        `json:"status"`
+	IsMember   bool                  `json:"isMember"`
 }
 
 type CreateCampaignRequest struct {
