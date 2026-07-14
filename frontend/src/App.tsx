@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from './components/AppLayout'
 import { DevAuthBanner } from './components/DevAuthBanner'
+import { MetrikaTracker } from './components/MetrikaTracker'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { CalendarPage } from './pages/CalendarPage'
@@ -126,6 +127,7 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
+      <MetrikaTracker />
       <AuthProvider>
         <DevAuthBanner />
         <AppRoutes />
