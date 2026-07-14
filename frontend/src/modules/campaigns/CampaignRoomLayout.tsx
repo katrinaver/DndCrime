@@ -48,10 +48,13 @@ export function CampaignRoomLayout() {
   const { campaignId } = useParams<{ campaignId: string }>()
   const { user } = useAuth()
   const { campaign, resolving, notFound } = useResolvedCampaign(campaignId, user?.id)
-  const getCharacterByCampaignId = useCharacterStore((s) => s.getCharacterByCampaignId)
+  // Подписка именно на производное значение: если выбрать сам геттер (его ссылка
+  // стабильна), zustand не перерисует компонент, когда листы догрузятся, и баннер
+  // «нет персонажа» застрянет навсегда.
+  const character = useCharacterStore((s) =>
+    campaignId ? s.getCharacterByCampaignId(campaignId) : undefined,
+  )
   const fetchCharacters = useCharacterStore((s) => s.fetchCharacters)
-
-  const character = campaignId ? getCharacterByCampaignId(campaignId) : undefined
   const isMaster = campaign ? isCampaignMaster(campaign, user?.id) : false
 
   useEffect(() => {

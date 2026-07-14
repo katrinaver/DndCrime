@@ -60,22 +60,69 @@ async function capture(browser, base, route, auth, viewport, path) {
   const start = new Date('2026-01-01T00:00:00Z')
   await page.clock.install({ time: start })
   await page.clock.pauseAt(new Date(start.getTime() + 1))
+  // waitForLoadState('networkidle') нельзя переиспользовать: он срабатывает один раз,
+  // а поздние фетчи стартуют по таймерам, которые оживают только от clock.runFor.
+  // Считаем незавершённые запросы сами и ждём реальной тишины в сети.
+  // Тишину меряем по отметке последней сетевой активности, а не по снимкам счётчика:
+  // на быстром бэкенде целый всплеск запросов успевает начаться и закончиться между
+  // двумя опросами, и «тишина» засчиталась бы ложно.
+  let pendingRequests = 0
+  let lastNetworkActivity = Date.now()
+  const touch = (delta) => {
+    pendingRequests += delta
+    lastNetworkActivity = Date.now()
+  }
+  page.on('request', () => touch(1))
+  page.on('requestfinished', () => touch(-1))
+  page.on('requestfailed', () => touch(-1))
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+  const waitForNetworkQuiet = async (quietMs, timeoutMs) => {
+    const deadline = Date.now() + timeoutMs
+    while (Date.now() < deadline) {
+      if (pendingRequests === 0 && Date.now() - lastNetworkActivity >= quietMs) return
+      await sleep(50)
+    }
+  }
+  const isLoading = async () =>
+    (await page.locator('.animate-spin').count()) > 0 ||
+    (await page.getByText(/Загру(зка|жаем)/).count()) > 0
+
   await page.goto(`${base}${route}`, { waitUntil: 'domcontentloaded', timeout: 30_000 })
   await page.evaluate(() => document.fonts.ready)
-  // Let the SPA finish its auth (/api/me) and per-page API fetches before shooting.
-  // networkidle is driven by the browser network stack, so the paused clock doesn't stall it.
-  await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {})
-  // Belt-and-suspenders: the auth/page loaders render `.animate-spin`; drive the frozen
-  // clock forward until they clear so we never capture the spinner.
-  for (let i = 0; i < 30 && (await page.locator('.animate-spin').count()) > 0; i++) {
-    await page.clock.runFor(200)
+  // Спиннеры и текстовые лоадеры («Загрузка…»): крутим замороженные часы И спим
+  // реальное время — ответы API приходят по реальным часам, один runFor их не дождётся.
+  // Если страница так и грузится (бэкенд икнул, например во время деплоя) — перезагрузка.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0) {
+      await page.reload({ waitUntil: 'domcontentloaded', timeout: 30_000 })
+    }
+    await waitForNetworkQuiet(500, 20_000)
+    for (let i = 0; i < 40 && (await isLoading()); i++) {
+      await page.clock.runFor(200)
+      await sleep(150)
+    }
+    if (!(await isLoading())) break
+  }
+  // Часть страниц во время загрузки рендерит пустое состояние, а не лоадер, поэтому
+  // проверки выше проходят раньше времени. Крутим часы (это будит отложенные фетчи),
+  // ждём тишины в сети и снимаем текст DOM, пока два замера подряд не совпадут.
+  for (let i = 0, prev = ''; i < 10; i++) {
+    await page.clock.runFor(300)
+    await waitForNetworkQuiet(400, 5_000)
+    const text = await page.evaluate(() => document.body.innerText)
+    if (text === prev) break
+    prev = text
   }
   await page.addStyleTag({ content: '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}iframe[src*="accounts.google"]{visibility:hidden!important}' })
   await page.clock.runFor(1000)
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
   await page.clock.runFor(1000)
+  // Скролл до низа триггерит ленивые загрузки (аватары, картинки постов) — дожидаемся
+  // их до снимка, иначе картинка успевает появиться только в одном из двух прогонов.
+  await waitForNetworkQuiet(400, 5_000)
   await page.evaluate(() => window.scrollTo(0, 0))
   await page.clock.runFor(1000)
+  await waitForNetworkQuiet(400, 5_000)
   await page.screenshot({ path, fullPage: true })
   await context.close()
 }
