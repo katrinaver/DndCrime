@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { BackLink } from '../components/BackLink'
+import { Button } from '../components/ui/Button'
+import { downloadCharacterJson } from '../modules/characters/lssJson'
 import { CharacterSheetForm } from '../modules/characters/CharacterSheetForm'
 import { QuestionnaireForm } from '../modules/characters/QuestionnaireForm'
 import { useCampaignQuestionnaire } from '../modules/campaigns/useCampaignQuestionnaire'
@@ -40,6 +42,13 @@ export function CharacterSheetPage() {
             {character.campaignName && ` · ${character.campaignName}`}
           </p>
         </div>
+        <Button
+          variant="secondary"
+          className="!w-auto"
+          onClick={() => downloadCharacterJson(character)}
+        >
+          Экспорт в JSON
+        </Button>
       </div>
 
       {(character.creationType === 'general' || character.creationType === 'campaign') &&
