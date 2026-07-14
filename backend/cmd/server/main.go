@@ -108,6 +108,7 @@ func main() {
 				r.Post("/progress/notes", h.CreateCampaignProgressNote)
 				r.Delete("/progress/notes/{noteID}", h.DeleteCampaignProgressNote)
 				r.Post("/invitation", h.PublishCampaignInvitation)
+				r.Get("/invite", h.GetCampaignInvite)
 				r.Post("/join", h.JoinCampaign)
 				r.Post("/leave", h.LeaveCampaign)
 				r.Route("/chat", func(r chi.Router) {

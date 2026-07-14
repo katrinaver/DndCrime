@@ -16,10 +16,27 @@ export function CampaignMasterInvitationBanner({ campaign }: CampaignMasterInvit
   const [publishing, setPublishing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [published, setPublished] = useState(Boolean(campaign.invitationPostId))
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     setPublished(Boolean(campaign.invitationPostId))
   }, [campaign.invitationPostId])
+
+  useEffect(() => {
+    if (!copied) return
+    const timer = setTimeout(() => setCopied(false), 2000)
+    return () => clearTimeout(timer)
+  }, [copied])
+
+  async function handleCopyLink() {
+    setError(null)
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/join/${campaign.id}`)
+      setCopied(true)
+    } catch {
+      setError('Не удалось скопировать ссылку — скопируйте адрес вручную')
+    }
+  }
 
   async function handlePublish() {
     setPublishing(true)
@@ -38,6 +55,22 @@ export function CampaignMasterInvitationBanner({ campaign }: CampaignMasterInvit
   return (
     <div className="mb-6 rounded-xl border border-dnd-gold/30 bg-dnd-gold/5 p-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-white">Пригласить игроков</p>
+          <p className="mt-1 text-xs text-dnd-muted">
+            Отправьте игрокам ссылку — по ней можно присоединиться к кампании
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          className="!w-auto px-5"
+          onClick={() => void handleCopyLink()}
+        >
+          {copied ? 'Ссылка скопирована' : 'Скопировать ссылку'}
+        </Button>
+      </div>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-t border-dnd-gold/20 pt-4">
         <div>
           <p className="text-sm font-medium text-white">Приглашение в новостях</p>
           <p className="mt-1 text-xs text-dnd-muted">

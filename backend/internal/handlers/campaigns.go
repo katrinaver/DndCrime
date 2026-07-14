@@ -463,6 +463,43 @@ func (h *Handler) PublishCampaignInvitation(w http.ResponseWriter, r *http.Reque
 	})
 }
 
+// GetCampaignInvite отдаёт превью кампании для страницы приглашения.
+// В отличие от GetCampaign доступен не только участникам: ссылку-приглашение
+// открывают ещё не присоединившиеся игроки.
+func (h *Handler) GetCampaignInvite(w http.ResponseWriter, r *http.Request) {
+	user, ok := auth.UserFromContext(r.Context())
+	if !ok {
+		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	campaignID := chi.URLParam(r, "campaignID")
+	campaign, found := h.store.GetCampaign(campaignID)
+	if !found {
+		httpx.WriteError(w, http.StatusNotFound, "campaign not found")
+		return
+	}
+
+	isMember, err := h.store.IsCampaignMember(campaignID, user.ID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+
+	enriched := h.enrichCampaign(campaign)
+	httpx.WriteJSON(w, http.StatusOK, models.CampaignInvitePreview{
+		CampaignID: campaign.ID,
+		Name:       campaign.Name,
+		Master:     *enriched.MasterProfile,
+		Setting:    campaign.Setting,
+		Level:      campaign.Level,
+		Players:    campaign.Players,
+		MaxPlayers: campaign.MaxPlayers,
+		Status:     campaign.Status,
+		IsMember:   isMember,
+	})
+}
+
 func (h *Handler) JoinCampaign(w http.ResponseWriter, r *http.Request) {
 	user, ok := auth.UserFromContext(r.Context())
 	if !ok {

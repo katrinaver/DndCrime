@@ -4,6 +4,7 @@ import type {
   Campaign,
   CampaignAsset,
   CampaignCreateInput,
+  CampaignInvitePreview,
   CampaignProgress,
   CampaignUpdateInput,
   QuestionnaireFieldSetting,
@@ -125,6 +126,10 @@ export function publishCampaignInvitation(campaignId: string) {
   return apiFetch<PublishInvitationResponse>(`/api/campaigns/${campaignId}/invitation`, {
     method: 'POST',
   })
+}
+
+export function fetchCampaignInvite(campaignId: string) {
+  return apiFetch<CampaignInvitePreview>(`/api/campaigns/${campaignId}/invite`)
 }
 
 export function joinCampaign(campaignId: string) {

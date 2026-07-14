@@ -39,6 +39,21 @@ type Campaign struct {
 	UpdatedAt           time.Time      `json:"updatedAt"`
 }
 
+// CampaignInvitePreview — ограниченная карточка кампании для страницы
+// приглашения: доступна любому авторизованному пользователю по ссылке,
+// поэтому не содержит место встреч и состав партии.
+type CampaignInvitePreview struct {
+	CampaignID string                `json:"campaignId"`
+	Name       string                `json:"name"`
+	Master     CampaignMasterProfile `json:"master"`
+	Setting    string                `json:"setting"`
+	Level      string                `json:"level"`
+	Players    int                   `json:"players"`
+	MaxPlayers int                   `json:"maxPlayers"`
+	Status     CampaignStatus        `json:"status"`
+	IsMember   bool                  `json:"isMember"`
+}
+
 type CreateCampaignRequest struct {
 	Name                string                      `json:"name"`
 	SessionDate         string                      `json:"sessionDate"`
