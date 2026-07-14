@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { BackLink } from '../components/BackLink'
 import { Button } from '../components/ui/Button'
 import { CharacterSheetForm } from '../modules/characters/CharacterSheetForm'
@@ -9,10 +9,15 @@ import { useCharacterStore } from '../store/characterStore'
 
 export function CharacterClassicPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const createCharacter = useCharacterStore((s) => s.createCharacter)
+
+  const importedSheet = (location.state as { importedSheet?: CharacterSheet } | null)
+    ?.importedSheet
 
   const [sheet, setSheet] = useState<CharacterSheet>(() => ({
     ...emptyCharacterSheet(),
+    ...importedSheet,
     creationType: 'classic',
   }))
   const [submitting, setSubmitting] = useState(false)
@@ -42,7 +47,9 @@ export function CharacterClassicPage() {
       <div className="mt-4 mb-6">
         <h2 className="text-2xl font-semibold text-white">Новый персонаж</h2>
         <p className="mt-1 text-sm text-dnd-muted">
-          Классический лист персонажа D&amp;D 5e (редакция 2024)
+          {importedSheet
+            ? 'Данные импортированы из JSON — проверьте лист и создайте персонажа'
+            : 'Классический лист персонажа D&D 5e (редакция 2024)'}
         </p>
       </div>
 
