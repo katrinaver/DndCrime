@@ -49,15 +49,16 @@ jobs:
           printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/deploy_key
           printf '%s\n' "$CONTROL_KEY" > ~/.ssh/control_key
           chmod 600 ~/.ssh/deploy_key ~/.ssh/control_key
-          echo 'germany.vps.gistrec.cloud ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJIy14M39XFKTzrbhuOaMw1Hragd2sXlrKN3VjMOwg4h' > ~/.ssh/known_hosts
+          echo '${{ vars.DEPLOY_HOST }} ${{ vars.DEPLOY_HOSTKEY }}' > ~/.ssh/known_hosts
       - name: Upload staging artifacts
         run: |
           RSYNC_SSH="ssh -i ~/.ssh/deploy_key -o ControlPath=none"
-          rsync -az --delete -e "$RSYNC_SSH" frontend/dist/ gistrec@germany.vps.gistrec.cloud:frontend/dist/
-          rsync -az -e "$RSYNC_SSH" backend/server gistrec@germany.vps.gistrec.cloud:backend/server
-          rsync -az -e "$RSYNC_SSH" deploy/refresh-staging-db.sh gistrec@germany.vps.gistrec.cloud:deploy/refresh-staging-db.sh
+          rsync -az --delete -e "$RSYNC_SSH" frontend/dist/ gistrec@${{ vars.DEPLOY_HOST }}:frontend/dist/
+          rsync -az -e "$RSYNC_SSH" backend/server gistrec@${{ vars.DEPLOY_HOST }}:backend/server
+          rsync -az -e "$RSYNC_SSH" ecosystem.config.js gistrec@${{ vars.DEPLOY_HOST }}:ecosystem.config.js
+          rsync -az -e "$RSYNC_SSH" deploy/refresh-staging-db.sh gistrec@${{ vars.DEPLOY_HOST }}:deploy/refresh-staging-db.sh
       - name: Refresh production data and restart staging
-        run: ssh -i ~/.ssh/control_key -o ControlPath=none gistrec@germany.vps.gistrec.cloud deploy
+        run: ssh -i ~/.ssh/control_key -o ControlPath=none gistrec@${{ vars.DEPLOY_HOST }} deploy
       - name: Update staging comment
         uses: actions/github-script@v7
         with:
