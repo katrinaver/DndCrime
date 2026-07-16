@@ -54,17 +54,17 @@ jobs:
           printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/deploy_key
           printf '%s\n' "$CONTROL_KEY" > ~/.ssh/control_key
           chmod 600 ~/.ssh/deploy_key ~/.ssh/control_key
-          echo 'germany.vps.gistrec.cloud ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJIy14M39XFKTzrbhuOaMw1Hragd2sXlrKN3VjMOwg4h' > ~/.ssh/known_hosts
+          echo '${{ vars.DEPLOY_HOST }} ${{ vars.DEPLOY_HOSTKEY }}' > ~/.ssh/known_hosts
       - name: Upload prod artifacts
         # Фронт: новые файлы сначала полностью передаются во временные пути, устаревшие
         # удаляются только после применения обновлений (--delay-updates/--delete-delay).
         run: |
           RSYNC_SSH="ssh -i ~/.ssh/deploy_key -o ControlPath=none"
-          rsync -az --delay-updates --delete-delay -e "$RSYNC_SSH" frontend/dist/ gistrec@germany.vps.gistrec.cloud:frontend/dist/
-          rsync -az -e "$RSYNC_SSH" backend/server gistrec@germany.vps.gistrec.cloud:backend/server
-          rsync -az -e "$RSYNC_SSH" ecosystem.config.js gistrec@germany.vps.gistrec.cloud:ecosystem.config.js
+          rsync -az --delay-updates --delete-delay -e "$RSYNC_SSH" frontend/dist/ gistrec@${{ vars.DEPLOY_HOST }}:frontend/dist/
+          rsync -az -e "$RSYNC_SSH" backend/server gistrec@${{ vars.DEPLOY_HOST }}:backend/server
+          rsync -az -e "$RSYNC_SSH" ecosystem.config.js gistrec@${{ vars.DEPLOY_HOST }}:ecosystem.config.js
       - name: Restart prod backend
-        run: ssh -i ~/.ssh/control_key -o ControlPath=none gistrec@germany.vps.gistrec.cloud deploy
+        run: ssh -i ~/.ssh/control_key -o ControlPath=none gistrec@${{ vars.DEPLOY_HOST }} deploy
       - name: Добавить ссылку на prod в смерженный PR
         uses: actions/github-script@v7
         with:
