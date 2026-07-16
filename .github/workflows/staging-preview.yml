@@ -55,6 +55,7 @@ jobs:
           RSYNC_SSH="ssh -i ~/.ssh/deploy_key -o ControlPath=none"
           rsync -az --delete -e "$RSYNC_SSH" frontend/dist/ gistrec@germany.vps.gistrec.cloud:frontend/dist/
           rsync -az -e "$RSYNC_SSH" backend/server gistrec@germany.vps.gistrec.cloud:backend/server
+          rsync -az -e "$RSYNC_SSH" ecosystem.config.js gistrec@germany.vps.gistrec.cloud:ecosystem.config.js
           rsync -az -e "$RSYNC_SSH" deploy/refresh-staging-db.sh gistrec@germany.vps.gistrec.cloud:deploy/refresh-staging-db.sh
       - name: Refresh production data and restart staging
         run: ssh -i ~/.ssh/control_key -o ControlPath=none gistrec@germany.vps.gistrec.cloud deploy

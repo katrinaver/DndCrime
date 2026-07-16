@@ -62,6 +62,7 @@ jobs:
           RSYNC_SSH="ssh -i ~/.ssh/deploy_key -o ControlPath=none"
           rsync -az --delay-updates --delete-delay -e "$RSYNC_SSH" frontend/dist/ gistrec@germany.vps.gistrec.cloud:frontend/dist/
           rsync -az -e "$RSYNC_SSH" backend/server gistrec@germany.vps.gistrec.cloud:backend/server
+          rsync -az -e "$RSYNC_SSH" ecosystem.config.js gistrec@germany.vps.gistrec.cloud:ecosystem.config.js
       - name: Restart prod backend
         run: ssh -i ~/.ssh/control_key -o ControlPath=none gistrec@germany.vps.gistrec.cloud deploy
       - name: Добавить ссылку на prod в смерженный PR
