@@ -10,6 +10,9 @@ name: prod-deploy
 on:
   push:
     branches: [main]
+  # Ручной редеплой текущего main: после смены DEPLOY_HOST (переезд VM),
+  # server-side правок .env или для восстановления без пустого коммита.
+  workflow_dispatch:
 
 permissions:
   contents: read

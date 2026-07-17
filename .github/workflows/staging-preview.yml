@@ -4,6 +4,10 @@ on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened]
+  # Ручной редеплой staging из main: после смены DEPLOY_HOST (переезд VM)
+  # или чтобы перезалить staging-слот без открытого PR. Без PR-контекста
+  # checkout берёт main, а PR-шаги (комментарий, visual-diff) скипаются.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -60,6 +64,7 @@ jobs:
       - name: Refresh production data and restart staging
         run: ssh -i ~/.ssh/control_key -o ControlPath=none gistrec@${{ vars.DEPLOY_HOST }} deploy
       - name: Update staging comment
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
@@ -74,6 +79,9 @@ jobs:
 
   visual-diff:
     needs: deploy
+    # Прод-против-PR дифф осмыслен только в PR-контексте; при ручном
+    # редеплое main сравнивать нечего и некуда комментировать.
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
