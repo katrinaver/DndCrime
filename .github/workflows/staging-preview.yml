@@ -53,7 +53,10 @@ jobs:
           printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/deploy_key
           printf '%s\n' "$CONTROL_KEY" > ~/.ssh/control_key
           chmod 600 ~/.ssh/deploy_key ~/.ssh/control_key
-          echo '${{ vars.DEPLOY_HOST }} ${{ vars.DEPLOY_HOSTKEY }}' > ~/.ssh/known_hosts
+          # Деплой-хост доверенный (алиас deploy.dnd-crime.gistrec.cloud в нашем DNS):
+          # первый ключ принимается автоматически, так что переезд VPS за алиасом
+          # не требует никаких правок в CI.
+          printf 'Host %s\n  StrictHostKeyChecking accept-new\n' '${{ vars.DEPLOY_HOST }}' > ~/.ssh/config
       - name: Upload staging artifacts
         run: |
           RSYNC_SSH="ssh -i ~/.ssh/deploy_key -o ControlPath=none"
